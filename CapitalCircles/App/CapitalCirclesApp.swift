@@ -16,7 +16,7 @@ struct CapitalCirclesApp: App {
             }
             .environment(appState)
             .environment(stateManager)
-            .tint(CCTheme.primaryBlue)
+            .tint(CCTheme.navy)
         }
     }
 }
@@ -28,17 +28,27 @@ struct CapitalCirclesApp: App {
 /// authentication service for secure session management.
 @Observable
 final class AppState {
+    /// Stored property so @Observable tracks changes and triggers UI updates.
+    /// Persisted to UserDefaults on every write through didSet.
     var hasCompletedOnboarding: Bool {
-        get { UserDefaults.standard.bool(forKey: "hasCompletedOnboarding") }
-        set { UserDefaults.standard.set(newValue, forKey: "hasCompletedOnboarding") }
+        didSet {
+            UserDefaults.standard.set(hasCompletedOnboarding, forKey: "hasCompletedOnboarding")
+        }
     }
 
     var currentUserId: UUID? {
-        get {
-            guard let str = UserDefaults.standard.string(forKey: "currentUserId") else { return nil }
-            return UUID(uuidString: str)
+        didSet {
+            UserDefaults.standard.set(currentUserId?.uuidString, forKey: "currentUserId")
         }
-        set { UserDefaults.standard.set(newValue?.uuidString, forKey: "currentUserId") }
+    }
+
+    init() {
+        self.hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
+        if let str = UserDefaults.standard.string(forKey: "currentUserId") {
+            self.currentUserId = UUID(uuidString: str)
+        } else {
+            self.currentUserId = nil
+        }
     }
 
     func completeOnboarding(userId: UUID) {
