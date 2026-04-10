@@ -5,116 +5,93 @@ struct CirclesListView: View {
     @State private var showCreateCircle = false
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: CCTheme.paddingMedium) {
-                    if state.circles.isEmpty {
-                        EmptyStateCard(
-                            icon: "person.3.fill",
-                            title: "No circles yet",
-                            message: "Create a circle with your family, friends, or roommates to start reaching goals together",
-                            actionLabel: "Create circle",
-                            action: { showCreateCircle = true }
-                        )
-                        .padding(.top, 40)
-                    } else {
-                        ForEach(state.circles) { circle in
-                            NavigationLink(value: circle) {
-                                CircleCard(circle: circle)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-                .padding(.horizontal, CCTheme.paddingMedium)
-                .padding(.top, CCTheme.paddingSmall)
-            }
-            .background(CCTheme.backgroundPrimary)
-            .navigationTitle("Circles")
-            .navigationDestination(for: Circle.self) { circle in
-                CircleDetailView(circleId: circle.id)
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showCreateCircle = true
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .foregroundStyle(CCTheme.primaryBlue)
-                            .font(.title3)
-                    }
+        ScrollView {
+            VStack(alignment: .leading, spacing: CCTheme.space6) {
+                header
+
+                if state.circles.isEmpty {
+                    emptyState
+                } else {
+                    circlesList
                 }
             }
-            .sheet(isPresented: $showCreateCircle) {
-                CreateCircleView()
+            .padding(.vertical, CCTheme.space5)
+        }
+        .background(CCTheme.canvas)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("Circles")
+                    .font(.ccHeadline)
+                    .foregroundStyle(CCTheme.ink)
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showCreateCircle = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(CCTheme.ink)
+                }
+            }
+        }
+        .navigationDestination(for: Circle.self) { circle in
+            CircleDetailView(circleId: circle.id)
+        }
+        .navigationDestination(for: UUID.self) { id in
+            CircleDetailView(circleId: id)
+        }
+        .sheet(isPresented: $showCreateCircle) {
+            CreateCircleView()
         }
     }
-}
 
-// MARK: - Circle Card
-
-struct CircleCard: View {
-    let circle: Circle
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 14) {
-                Image(systemName: circle.iconName)
-                    .font(.title2)
-                    .foregroundStyle(.white)
-                    .frame(width: 52, height: 52)
-                    .background(
-                        LinearGradient(
-                            colors: [CCTheme.primaryBlue, CCTheme.accentBlue],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(circle.name)
-                        .font(.headline)
-                        .foregroundStyle(CCTheme.textPrimary)
-                    HStack(spacing: 8) {
-                        Label("\(circle.memberCount)", systemImage: "person.fill")
-                            .font(.caption)
-                            .foregroundStyle(CCTheme.textSecondary)
-                        Text("•")
-                            .foregroundStyle(CCTheme.textSecondary.opacity(0.5))
-                        Text(circle.type.rawValue)
-                            .font(.caption)
-                            .foregroundStyle(CCTheme.textSecondary)
-                    }
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .foregroundStyle(CCTheme.textSecondary.opacity(0.5))
-                    .font(.caption)
-            }
-
-            if !circle.goals.isEmpty {
-                Divider()
-                HStack(spacing: 10) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("\(circle.goals.count) active goals")
-                            .font(.caption2)
-                            .foregroundStyle(CCTheme.textSecondary)
-                        Text("\(Int(circle.totalGoalProgress * 100))% avg progress")
-                            .font(.subheadline.bold())
-                            .foregroundStyle(CCTheme.primaryBlue)
-                    }
-                    Spacer()
-                    ProgressView(value: circle.totalGoalProgress)
-                        .tint(CCTheme.primaryBlue)
-                        .frame(maxWidth: 100)
-                }
-            }
+    private var header: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space2) {
+            Text("YOUR GROUPS")
+                .font(.ccCaption)
+                .foregroundStyle(CCTheme.slate)
+                .tracking(0.5)
+            Text("Circles")
+                .font(.ccLargeTitle)
+                .foregroundStyle(CCTheme.ink)
+            Text("Reach goals together without mixing accounts")
+                .font(.ccSubhead)
+                .foregroundStyle(CCTheme.slate)
         }
-        .padding(CCTheme.paddingMedium)
-        .background(CCTheme.backgroundCard)
-        .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusLarge))
-        .shadow(color: .black.opacity(0.05), radius: 10, y: 3)
+        .padding(.horizontal, CCTheme.space5)
+    }
+
+    private var circlesList: some View {
+        VStack(spacing: 0) {
+            Divider()
+            ForEach(Array(state.circles.enumerated()), id: \.element.id) { index, circle in
+                NavigationLink(value: circle.id) {
+                    CircleListRow(circle: circle)
+                }
+                .buttonStyle(.plain)
+                if index < state.circles.count - 1 {
+                    Divider().padding(.leading, 56)
+                }
+            }
+            Divider()
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space5) {
+            InlineEmptyState(
+                icon: "person.2",
+                title: "No circles yet",
+                subtitle: "Create a group with family or friends to get started"
+            )
+            Button {
+                showCreateCircle = true
+            } label: {
+                Text("Create a circle")
+            }
+            .buttonStyle(CCPrimaryButtonStyle())
+        }
+        .padding(.horizontal, CCTheme.space5)
     }
 }

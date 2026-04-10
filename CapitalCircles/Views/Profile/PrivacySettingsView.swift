@@ -1,5 +1,7 @@
 import SwiftUI
 
+// MARK: - Privacy Settings
+
 struct PrivacySettingsView: View {
     @AppStorage("privacy.biometricLock") private var biometricLock = true
     @AppStorage("privacy.shareAnalytics") private var shareAnalytics = false
@@ -7,54 +9,113 @@ struct PrivacySettingsView: View {
     @AppStorage("privacy.smartSuggestions") private var smartSuggestions = true
 
     var body: some View {
-        List {
-            Section {
-                HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: "lock.shield.fill")
-                        .font(.title2)
-                        .foregroundStyle(CCTheme.primaryBlue)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Privacy first by design")
-                            .font(.subheadline.bold())
-                        Text("You control what is shared and with whom. Your financial details stay private until you opt in.")
-                            .font(.caption)
-                            .foregroundStyle(CCTheme.textSecondary)
+        ScrollView {
+            VStack(alignment: .leading, spacing: CCTheme.space7) {
+                header
+
+                privacyPrinciple
+
+                toggleGroup(title: "Security") {
+                    toggleRow(title: "Biometric lock", isOn: $biometricLock)
+                }
+
+                toggleGroup(title: "Data sharing") {
+                    toggleRow(title: "Share anonymous analytics", isOn: $shareAnalytics)
+                    Divider().padding(.leading, CCTheme.space5)
+                    toggleRow(title: "Location-aware suggestions", isOn: $locationAware)
+                    Divider().padding(.leading, CCTheme.space5)
+                    toggleRow(title: "Smart card suggestions", isOn: $smartSuggestions)
+                }
+
+                CCSection("Your data") {
+                    VStack(spacing: 0) {
+                        Divider()
+                        actionRow(title: "Download my data", color: CCTheme.ink) {}
+                        Divider().padding(.leading, CCTheme.space5)
+                        actionRow(title: "Delete account", color: CCTheme.red) {}
+                        Divider()
                     }
                 }
-                .padding(.vertical, 4)
             }
-
-            Section("Security") {
-                Toggle(isOn: $biometricLock) {
-                    Label("Biometric lock", systemImage: "faceid")
-                }
-            }
-
-            Section("Data sharing") {
-                Toggle(isOn: $shareAnalytics) {
-                    Label("Share anonymous analytics", systemImage: "chart.bar.fill")
-                }
-                Toggle(isOn: $locationAware) {
-                    Label("Location-aware suggestions", systemImage: "location.fill")
-                }
-                Toggle(isOn: $smartSuggestions) {
-                    Label("Smart card suggestions", systemImage: "sparkles")
-                }
-            }
-
-            Section("Your data") {
-                Button {} label: {
-                    Label("Download my data", systemImage: "arrow.down.doc.fill")
-                }
-                Button(role: .destructive) {} label: {
-                    Label("Delete account", systemImage: "trash.fill")
-                }
-            }
+            .padding(.vertical, CCTheme.space5)
+            .padding(.bottom, CCTheme.space8)
         }
-        .navigationTitle("Privacy & Sharing")
+        .background(CCTheme.canvas)
+        .navigationTitle("Privacy")
         .navigationBarTitleDisplayMode(.inline)
     }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space2) {
+            Text("SETTINGS")
+                .font(.ccCaption)
+                .foregroundStyle(CCTheme.slate)
+                .tracking(0.5)
+            Text("Privacy & sharing")
+                .font(.ccLargeTitle)
+                .foregroundStyle(CCTheme.ink)
+        }
+        .padding(.horizontal, CCTheme.space5)
+    }
+
+    private var privacyPrinciple: some View {
+        HStack(alignment: .top, spacing: CCTheme.space3) {
+            Image(systemName: "lock.shield")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(CCTheme.navy)
+            Text("You control what is shared and with whom. Your financial details stay private until you opt in.")
+                .font(.ccFootnote)
+                .foregroundStyle(CCTheme.slate)
+                .lineSpacing(3)
+        }
+        .padding(CCTheme.space5)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(CCTheme.fog)
+        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+        .padding(.horizontal, CCTheme.space5)
+    }
+
+    private func toggleGroup<Content: View>(title: String, @ViewBuilder content: @escaping () -> Content) -> some View {
+        CCSection(title) {
+            VStack(spacing: 0) {
+                Divider()
+                content()
+                Divider()
+            }
+        }
+    }
+
+    private func toggleRow(title: String, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            Text(title)
+                .font(.ccBody)
+                .foregroundStyle(CCTheme.ink)
+        }
+        .tint(CCTheme.navy)
+        .padding(.horizontal, CCTheme.space5)
+        .padding(.vertical, CCTheme.space4)
+    }
+
+    private func actionRow(title: String, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Text(title)
+                    .font(.ccBody)
+                    .foregroundStyle(color)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(CCTheme.mist)
+            }
+            .padding(.horizontal, CCTheme.space5)
+            .padding(.vertical, CCTheme.space4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
 }
+
+// MARK: - Notification Settings
 
 struct NotificationSettingsView: View {
     @AppStorage("notif.goalMilestones") private var goalMilestones = true
@@ -64,31 +125,78 @@ struct NotificationSettingsView: View {
     @AppStorage("notif.lowBalance") private var lowBalance = true
 
     var body: some View {
-        List {
-            Section("Goals") {
-                Toggle("Milestone celebrations", isOn: $goalMilestones)
-                Toggle("Deadline reminders", isOn: .constant(true))
-            }
+        ScrollView {
+            VStack(alignment: .leading, spacing: CCTheme.space7) {
+                header
 
-            Section("Circles") {
-                Toggle("New member activity", isOn: $circleUpdates)
-                Toggle("Contributions from circle members", isOn: .constant(true))
-            }
+                group(title: "Goals") {
+                    row(title: "Milestone celebrations", isOn: $goalMilestones)
+                    Divider().padding(.leading, CCTheme.space5)
+                    row(title: "Deadline reminders", isOn: .constant(true))
+                }
 
-            Section("Insights") {
-                Toggle("Weekly Smart Statement", isOn: $weeklyInsights)
-                Toggle("Card optimization tips", isOn: $cardSuggestions)
-            }
+                group(title: "Circles") {
+                    row(title: "New member activity", isOn: $circleUpdates)
+                    Divider().padding(.leading, CCTheme.space5)
+                    row(title: "Contributions from circle members", isOn: .constant(true))
+                }
 
-            Section("Account") {
-                Toggle("Low balance alerts", isOn: $lowBalance)
-                Toggle("Security alerts", isOn: .constant(true))
+                group(title: "Insights") {
+                    row(title: "Weekly Smart Statement", isOn: $weeklyInsights)
+                    Divider().padding(.leading, CCTheme.space5)
+                    row(title: "Card optimization tips", isOn: $cardSuggestions)
+                }
+
+                group(title: "Account") {
+                    row(title: "Low balance alerts", isOn: $lowBalance)
+                    Divider().padding(.leading, CCTheme.space5)
+                    row(title: "Security alerts", isOn: .constant(true))
+                }
             }
+            .padding(.vertical, CCTheme.space5)
+            .padding(.bottom, CCTheme.space8)
         }
+        .background(CCTheme.canvas)
         .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.inline)
     }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space2) {
+            Text("SETTINGS")
+                .font(.ccCaption)
+                .foregroundStyle(CCTheme.slate)
+                .tracking(0.5)
+            Text("Notifications")
+                .font(.ccLargeTitle)
+                .foregroundStyle(CCTheme.ink)
+        }
+        .padding(.horizontal, CCTheme.space5)
+    }
+
+    private func group<Content: View>(title: String, @ViewBuilder content: @escaping () -> Content) -> some View {
+        CCSection(title) {
+            VStack(spacing: 0) {
+                Divider()
+                content()
+                Divider()
+            }
+        }
+    }
+
+    private func row(title: String, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            Text(title)
+                .font(.ccBody)
+                .foregroundStyle(CCTheme.ink)
+        }
+        .tint(CCTheme.navy)
+        .padding(.horizontal, CCTheme.space5)
+        .padding(.vertical, CCTheme.space4)
+    }
 }
+
+// MARK: - Accessibility Settings
 
 struct AccessibilitySettingsView: View {
     @AppStorage("a11y.increaseContrast") private var increaseContrast = false
@@ -96,27 +204,62 @@ struct AccessibilitySettingsView: View {
     @AppStorage("a11y.largeAmounts") private var largeAmounts = false
 
     var body: some View {
-        List {
-            Section("Display") {
-                Toggle("Increase contrast", isOn: $increaseContrast)
-                Toggle("Reduce motion", isOn: $reduceMotion)
-                Toggle("Larger amount text", isOn: $largeAmounts)
-            }
-
-            Section {
-                HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: "info.circle.fill")
-                        .foregroundStyle(CCTheme.accentBlue)
-                    Text("Capital Circles supports VoiceOver, Dynamic Type, and high contrast system-wide. These settings complement iOS accessibility settings.")
-                        .font(.caption)
-                        .foregroundStyle(CCTheme.textSecondary)
+        ScrollView {
+            VStack(alignment: .leading, spacing: CCTheme.space7) {
+                VStack(alignment: .leading, spacing: CCTheme.space2) {
+                    Text("SETTINGS")
+                        .font(.ccCaption)
+                        .foregroundStyle(CCTheme.slate)
+                        .tracking(0.5)
+                    Text("Accessibility")
+                        .font(.ccLargeTitle)
+                        .foregroundStyle(CCTheme.ink)
                 }
+                .padding(.horizontal, CCTheme.space5)
+
+                CCSection("Display") {
+                    VStack(spacing: 0) {
+                        Divider()
+                        toggleRow("Increase contrast", isOn: $increaseContrast)
+                        Divider().padding(.leading, CCTheme.space5)
+                        toggleRow("Reduce motion", isOn: $reduceMotion)
+                        Divider().padding(.leading, CCTheme.space5)
+                        toggleRow("Larger amount text", isOn: $largeAmounts)
+                        Divider()
+                    }
+                }
+
+                HStack(alignment: .top, spacing: CCTheme.space3) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(CCTheme.slate)
+                    Text("Capital Circles supports VoiceOver, Dynamic Type, and high contrast system-wide.")
+                        .font(.ccFootnote)
+                        .foregroundStyle(CCTheme.slate)
+                }
+                .padding(.horizontal, CCTheme.space5)
             }
+            .padding(.vertical, CCTheme.space5)
+            .padding(.bottom, CCTheme.space8)
         }
+        .background(CCTheme.canvas)
         .navigationTitle("Accessibility")
         .navigationBarTitleDisplayMode(.inline)
     }
+
+    private func toggleRow(_ title: String, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            Text(title)
+                .font(.ccBody)
+                .foregroundStyle(CCTheme.ink)
+        }
+        .tint(CCTheme.navy)
+        .padding(.horizontal, CCTheme.space5)
+        .padding(.vertical, CCTheme.space4)
+    }
 }
+
+// MARK: - Edit Profile
 
 struct EditProfileView: View {
     @Environment(AppStateManager.self) private var state
@@ -125,150 +268,295 @@ struct EditProfileView: View {
     @State private var email: String = ""
 
     var body: some View {
-        Form {
-            Section("Personal info") {
-                TextField("Name", text: $name)
-                TextField("Email", text: $email)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: CCTheme.space7) {
+                    VStack(alignment: .leading, spacing: CCTheme.space2) {
+                        Text("EDIT PROFILE")
+                            .font(.ccCaption)
+                            .foregroundStyle(CCTheme.slate)
+                            .tracking(0.5)
+                        Text("Your details")
+                            .font(.ccLargeTitle)
+                            .foregroundStyle(CCTheme.ink)
+                    }
+                    .padding(.horizontal, CCTheme.space5)
+
+                    VStack(alignment: .leading, spacing: CCTheme.space2) {
+                        Text("NAME")
+                            .font(.ccCaption)
+                            .foregroundStyle(CCTheme.slate)
+                            .tracking(0.5)
+                        TextField("Your name", text: $name)
+                            .font(.ccBody)
+                            .padding(CCTheme.space4)
+                            .background(CCTheme.fog)
+                            .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+                    }
+                    .padding(.horizontal, CCTheme.space5)
+
+                    VStack(alignment: .leading, spacing: CCTheme.space2) {
+                        Text("EMAIL")
+                            .font(.ccCaption)
+                            .foregroundStyle(CCTheme.slate)
+                            .tracking(0.5)
+                        TextField("your@email.com", text: $email)
+                            .font(.ccBody)
+                            .keyboardType(.emailAddress)
+                            .textInputAutocapitalization(.never)
+                            .padding(CCTheme.space4)
+                            .background(CCTheme.fog)
+                            .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+                    }
+                    .padding(.horizontal, CCTheme.space5)
+                }
+                .padding(.vertical, CCTheme.space5)
+                .padding(.bottom, CCTheme.space9)
             }
-            Section("Avatar") {
-                HStack(spacing: 12) {
-                    Image(systemName: state.currentUser.avatarIcon)
-                        .font(.title)
-                        .foregroundStyle(CCTheme.primaryBlue)
-                        .frame(width: 60, height: 60)
-                        .background(CCTheme.lightBlue)
-                        .clipShape(SwiftUI.Circle())
-                    Text("Avatar editing will be available in a future update")
-                        .font(.caption)
-                        .foregroundStyle(CCTheme.textSecondary)
+            .background(CCTheme.canvas)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .font(.ccBody)
+                        .foregroundStyle(CCTheme.ink)
                 }
             }
-        }
-        .navigationTitle("Edit profile")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Save") {
-                    state.currentUser.name = name
-                    state.currentUser.email = email
-                    dismiss()
+            .overlay(alignment: .bottom) {
+                VStack(spacing: 0) {
+                    LinearGradient(
+                        colors: [CCTheme.canvas.opacity(0), CCTheme.canvas],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 20)
+
+                    Button {
+                        state.currentUser.name = name
+                        state.currentUser.email = email
+                        dismiss()
+                    } label: {
+                        Text("Save changes")
+                    }
+                    .buttonStyle(CCPrimaryButtonStyle())
+                    .padding(.horizontal, CCTheme.space5)
+                    .padding(.bottom, CCTheme.space5)
+                    .background(CCTheme.canvas)
                 }
-                .bold()
             }
-        }
-        .onAppear {
-            name = state.currentUser.name
-            email = state.currentUser.email
+            .onAppear {
+                name = state.currentUser.name
+                email = state.currentUser.email
+            }
         }
     }
 }
+
+// MARK: - Card Detail
 
 struct CardDetailView: View {
     let card: Card
 
     var body: some View {
         ScrollView {
-            VStack(spacing: CCTheme.paddingLarge) {
-                CapitalOneCardView(card: card)
-                    .frame(height: 200)
-                    .padding(.horizontal)
-
-                VStack(spacing: 0) {
-                    detailRow("Current balance", "$\(Int(card.currentBalance).formatted())", icon: "creditcard.fill")
-                    Divider().padding(.leading, 56)
-                    detailRow("Credit limit", "$\(Int(card.creditLimit).formatted())", icon: "chart.bar.fill")
-                    Divider().padding(.leading, 56)
-                    detailRow("Available credit", "$\(Int(card.creditLimit - card.currentBalance).formatted())", icon: "checkmark.circle.fill")
-                    Divider().padding(.leading, 56)
-                    detailRow("Rewards balance", "\(Int(card.rewardsBalance).formatted())", icon: "star.fill")
-                }
-                .padding(.horizontal, CCTheme.paddingMedium)
-                .background(CCTheme.backgroundCard)
-                .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
-                .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
-
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Rewards structure")
-                        .font(.headline)
-                    ForEach(SpendingCategory.allCases, id: \.self) { category in
-                        HStack {
-                            Label(category.rawValue, systemImage: category.icon)
-                                .font(.subheadline)
-                            Spacer()
-                            Text("\(String(format: "%.1f", card.cardType.rewardRate(for: category)))x")
-                                .font(.subheadline.bold())
-                                .foregroundStyle(CCTheme.primaryBlue)
-                        }
-                        .padding(.vertical, 6)
-                        if category != SpendingCategory.allCases.last {
-                            Divider()
-                        }
-                    }
-                }
-                .padding(CCTheme.paddingMedium)
-                .background(CCTheme.backgroundCard)
-                .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
-                .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+            VStack(alignment: .leading, spacing: CCTheme.space7) {
+                header
+                visualCard
+                detailsSection
+                rewardsSection
             }
-            .padding(.horizontal, CCTheme.paddingMedium)
-            .padding(.vertical, CCTheme.paddingMedium)
+            .padding(.vertical, CCTheme.space5)
+            .padding(.bottom, CCTheme.space8)
         }
-        .background(CCTheme.backgroundPrimary)
+        .background(CCTheme.canvas)
         .navigationTitle(card.name)
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private func detailRow(_ label: String, _ value: String, icon: String) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: icon)
-                .foregroundStyle(CCTheme.primaryBlue)
-                .frame(width: 32, height: 32)
-                .background(CCTheme.lightBlue)
-                .clipShape(SwiftUI.Circle())
+    private var header: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space2) {
+            Text("CAPITAL ONE")
+                .font(.ccCaption)
+                .foregroundStyle(CCTheme.slate)
+                .tracking(0.5)
+            Text(card.name)
+                .font(.ccLargeTitle)
+                .foregroundStyle(CCTheme.ink)
+            Text(card.cardType.rewardsDescription)
+                .font(.ccSubhead)
+                .foregroundStyle(CCTheme.slate)
+        }
+        .padding(.horizontal, CCTheme.space5)
+    }
+
+    private var visualCard: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space6) {
+            HStack {
+                Text("CAPITAL ONE")
+                    .font(.system(size: 11, weight: .bold))
+                    .tracking(1)
+                Spacer()
+                Image(systemName: "wave.3.right")
+                    .font(.system(size: 14))
+            }
+
+            Spacer()
+
+            VStack(alignment: .leading, spacing: CCTheme.space3) {
+                Text("•••• •••• •••• \(card.lastFourDigits)")
+                    .font(.system(size: 16, weight: .medium, design: .monospaced))
+                Text(card.name.uppercased())
+                    .font(.system(size: 14, weight: .semibold))
+                    .tracking(0.5)
+            }
+        }
+        .foregroundStyle(.white)
+        .padding(CCTheme.space5)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: 200)
+        .background(CCTheme.navy)
+        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusLarge))
+        .padding(.horizontal, CCTheme.space5)
+    }
+
+    private var detailsSection: some View {
+        CCSection("Balance") {
+            VStack(spacing: 0) {
+                Divider()
+                row(label: "Current balance", value: "$\(Int(card.currentBalance).formatted())")
+                Divider().padding(.leading, CCTheme.space5)
+                row(label: "Credit limit", value: "$\(Int(card.creditLimit).formatted())")
+                Divider().padding(.leading, CCTheme.space5)
+                row(label: "Available", value: "$\(Int(card.creditLimit - card.currentBalance).formatted())")
+                Divider().padding(.leading, CCTheme.space5)
+                row(label: "Rewards", value: "\(Int(card.rewardsBalance).formatted())")
+                Divider()
+            }
+        }
+    }
+
+    private var rewardsSection: some View {
+        CCSection("Rewards structure") {
+            VStack(spacing: 0) {
+                Divider()
+                ForEach(Array(SpendingCategory.allCases.enumerated()), id: \.element) { index, category in
+                    HStack {
+                        Text(category.rawValue)
+                            .font(.ccBody)
+                            .foregroundStyle(CCTheme.ink)
+                        Spacer()
+                        Text("\(String(format: "%.1f", card.cardType.rewardRate(for: category)))x")
+                            .font(.ccBody)
+                            .foregroundStyle(CCTheme.slate)
+                            .monospacedDigit()
+                    }
+                    .padding(.horizontal, CCTheme.space5)
+                    .padding(.vertical, CCTheme.space4)
+                    if index < SpendingCategory.allCases.count - 1 {
+                        Divider().padding(.leading, CCTheme.space5)
+                    }
+                }
+                Divider()
+            }
+        }
+    }
+
+    private func row(label: String, value: String) -> some View {
+        HStack {
             Text(label)
-                .font(.subheadline)
-                .foregroundStyle(CCTheme.textSecondary)
+                .font(.ccBody)
+                .foregroundStyle(CCTheme.slate)
             Spacer()
             Text(value)
-                .font(.subheadline.bold())
-                .foregroundStyle(CCTheme.textPrimary)
+                .font(.ccBody)
+                .foregroundStyle(CCTheme.ink)
+                .monospacedDigit()
         }
-        .padding(.vertical, 14)
+        .padding(.horizontal, CCTheme.space5)
+        .padding(.vertical, CCTheme.space4)
     }
 }
+
+// MARK: - Help
 
 struct HelpView: View {
     var body: some View {
-        List {
-            Section("Common questions") {
-                helpItem(title: "How do circles work?", body: "Circles are trusted groups where you track shared goals without combining finances.")
-                helpItem(title: "Can others see my spending?", body: "No, your personal spending stays private by default. You can opt in to share categories or full details in circle settings.")
-                helpItem(title: "What is a Smart Statement?", body: "An AI-generated monthly summary of your spending with personalized insights and tips.")
-                helpItem(title: "How does the Card Optimizer work?", body: "It analyzes the spending category and recommends which of your Capital One cards earns the best rewards.")
-            }
+        ScrollView {
+            VStack(alignment: .leading, spacing: CCTheme.space7) {
+                VStack(alignment: .leading, spacing: CCTheme.space2) {
+                    Text("SUPPORT")
+                        .font(.ccCaption)
+                        .foregroundStyle(CCTheme.slate)
+                        .tracking(0.5)
+                    Text("Help & support")
+                        .font(.ccLargeTitle)
+                        .foregroundStyle(CCTheme.ink)
+                }
+                .padding(.horizontal, CCTheme.space5)
 
-            Section("Contact") {
-                Label("support@capitalcircles.com", systemImage: "envelope.fill")
-                Label("1-800-CAP-ONE", systemImage: "phone.fill")
+                CCSection("Common questions") {
+                    VStack(spacing: 0) {
+                        Divider()
+                        faq(title: "How do circles work?", body: "Circles are trusted groups where you track shared goals without combining finances.")
+                        Divider()
+                        faq(title: "Can others see my spending?", body: "No. Your personal spending stays private by default.")
+                        Divider()
+                        faq(title: "What is a Smart Statement?", body: "An AI-generated monthly summary of your spending with personalized insights.")
+                        Divider()
+                        faq(title: "How does the card optimizer work?", body: "It analyzes the spending category and recommends which of your Capital One cards earns the best rewards.")
+                        Divider()
+                    }
+                }
+
+                CCSection("Contact") {
+                    VStack(spacing: 0) {
+                        Divider()
+                        contactRow(label: "Email", value: "support@capitalcircles.com")
+                        Divider().padding(.leading, CCTheme.space5)
+                        contactRow(label: "Phone", value: "1-800-CAP-ONE")
+                        Divider()
+                    }
+                }
             }
+            .padding(.vertical, CCTheme.space5)
+            .padding(.bottom, CCTheme.space8)
         }
-        .navigationTitle("Help & Support")
+        .background(CCTheme.canvas)
+        .navigationTitle("Help")
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private func helpItem(title: String, body: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+    private func faq(title: String, body: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(.subheadline.bold())
+                .font(.ccBody)
+                .foregroundStyle(CCTheme.ink)
             Text(body)
-                .font(.caption)
-                .foregroundStyle(CCTheme.textSecondary)
+                .font(.ccFootnote)
+                .foregroundStyle(CCTheme.slate)
+                .lineSpacing(2)
         }
-        .padding(.vertical, 4)
+        .padding(.horizontal, CCTheme.space5)
+        .padding(.vertical, CCTheme.space4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func contactRow(label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.ccBody)
+                .foregroundStyle(CCTheme.slate)
+            Spacer()
+            Text(value)
+                .font(.ccBody)
+                .foregroundStyle(CCTheme.ink)
+        }
+        .padding(.horizontal, CCTheme.space5)
+        .padding(.vertical, CCTheme.space4)
     }
 }
+
+// MARK: - Policy
 
 struct PolicyView: View {
     let title: String
@@ -276,12 +564,26 @@ struct PolicyView: View {
 
     var body: some View {
         ScrollView {
-            Text(content)
-                .font(.subheadline)
-                .foregroundStyle(CCTheme.textPrimary)
-                .padding()
+            VStack(alignment: .leading, spacing: CCTheme.space5) {
+                VStack(alignment: .leading, spacing: CCTheme.space2) {
+                    Text("LEGAL")
+                        .font(.ccCaption)
+                        .foregroundStyle(CCTheme.slate)
+                        .tracking(0.5)
+                    Text(title)
+                        .font(.ccLargeTitle)
+                        .foregroundStyle(CCTheme.ink)
+                }
+
+                Text(content)
+                    .font(.ccBody)
+                    .foregroundStyle(CCTheme.ink)
+                    .lineSpacing(6)
+            }
+            .padding(CCTheme.space5)
+            .padding(.bottom, CCTheme.space8)
         }
-        .background(CCTheme.backgroundPrimary)
+        .background(CCTheme.canvas)
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
     }

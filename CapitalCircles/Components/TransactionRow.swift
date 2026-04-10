@@ -4,30 +4,32 @@ struct TransactionRow: View {
     let transaction: Transaction
 
     var body: some View {
-        HStack(spacing: 14) {
-            // Category icon
+        HStack(spacing: CCTheme.space4) {
             Image(systemName: transaction.category.icon)
-                .font(.title3)
-                .foregroundStyle(CCTheme.primaryBlue)
-                .frame(width: 40, height: 40)
-                .background(CCTheme.lightBlue)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(CCTheme.navy)
+                .frame(width: 36, height: 36)
+                .background(CCTheme.fog)
                 .clipShape(SwiftUI.Circle())
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(transaction.merchantName)
-                    .font(.subheadline.bold())
-                    .foregroundStyle(CCTheme.textPrimary)
-                Text("\(transaction.category.rawValue)  •  \(transaction.date.formatted(.dateTime.month(.abbreviated).day()))")
-                    .font(.caption)
-                    .foregroundStyle(CCTheme.textSecondary)
+                    .font(.ccBody)
+                    .foregroundStyle(CCTheme.ink)
+                Text("\(transaction.category.rawValue) • \(transaction.date.formatted(.dateTime.month(.abbreviated).day()))")
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
             }
 
             Spacer()
 
             Text("-$\(Int(transaction.amount).formatted())")
-                .font(.subheadline.bold())
-                .foregroundStyle(CCTheme.textPrimary)
+                .font(.ccBody)
+                .foregroundStyle(CCTheme.ink)
+                .monospacedDigit()
         }
-        .padding(.vertical, 12)
+        .padding(.horizontal, CCTheme.space5)
+        .padding(.vertical, CCTheme.space4)
+        .contentShape(Rectangle())
     }
 }

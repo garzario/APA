@@ -22,51 +22,35 @@ struct GoalsListView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: CCTheme.paddingMedium) {
-                // Filter pills
-                Picker("Filter", selection: $filter) {
-                    ForEach(GoalFilter.allCases, id: \.self) { filter in
-                        Text(filter.rawValue).tag(filter)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding(.top, CCTheme.paddingSmall)
+            VStack(alignment: .leading, spacing: CCTheme.space7) {
+                header
 
-                // Summary
-                summaryCard
+                filterPicker
 
-                // Goals list
                 if filteredGoals.isEmpty {
-                    EmptyStateCard(
-                        icon: "target",
-                        title: "No goals yet",
-                        message: "Start tracking what matters most to you",
-                        actionLabel: "Create goal",
-                        action: { showCreateGoal = true }
-                    )
+                    emptyState
                 } else {
-                    ForEach(filteredGoals) { goal in
-                        Button {
-                            selectedGoal = goal
-                        } label: {
-                            GoalProgressCard(goal: goal)
-                        }
-                        .buttonStyle(.plain)
-                    }
+                    goalsList
                 }
             }
-            .padding(.horizontal, CCTheme.paddingMedium)
-            .padding(.bottom, CCTheme.paddingLarge)
+            .padding(.vertical, CCTheme.space5)
+            .padding(.bottom, CCTheme.space8)
         }
-        .background(CCTheme.backgroundPrimary)
-        .navigationTitle("Goals")
+        .background(CCTheme.canvas)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("Goals")
+                    .font(.ccHeadline)
+                    .foregroundStyle(CCTheme.ink)
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     showCreateGoal = true
                 } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .foregroundStyle(CCTheme.primaryBlue)
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(CCTheme.ink)
                 }
             }
         }
@@ -78,30 +62,85 @@ struct GoalsListView: View {
         }
     }
 
-    private var summaryCard: some View {
-        HStack(spacing: 12) {
-            StatCard(
-                title: "Total saved",
-                value: "$\(Int(state.totalSaved).formatted())",
-                subtitle: "Across \(state.allGoals.count) goals",
-                icon: "dollarsign.circle.fill",
-                color: CCTheme.successGreen
-            )
-            let completed = state.allGoals.filter { $0.isCompleted }.count
-            StatCard(
-                title: "Completed",
-                value: "\(completed)",
-                subtitle: "Goals reached",
-                icon: "checkmark.circle.fill",
-                color: CCTheme.primaryBlue
-            )
+    private var header: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space3) {
+            Text("TOTAL SAVED")
+                .font(.ccCaption)
+                .foregroundStyle(CCTheme.slate)
+                .tracking(0.5)
+            Text("$\(Int(state.totalSaved).formatted())")
+                .font(.ccAmountLarge)
+                .foregroundStyle(CCTheme.ink)
+                .monospacedDigit()
+            HStack(spacing: CCTheme.space2) {
+                Text("Across \(state.allGoals.count) goals")
+                Text("•")
+                    .foregroundStyle(CCTheme.mist)
+                let completed = state.allGoals.filter { $0.isCompleted }.count
+                Text("\(completed) completed")
+            }
+            .font(.ccSubhead)
+            .foregroundStyle(CCTheme.slate)
+        }
+        .padding(.horizontal, CCTheme.space5)
+    }
+
+    private var filterPicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: CCTheme.space2) {
+                ForEach(GoalFilter.allCases, id: \.self) { option in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            filter = option
+                        }
+                    } label: {
+                        Text(option.rawValue)
+                            .font(.ccSubhead.weight(filter == option ? .semibold : .regular))
+                            .foregroundStyle(filter == option ? .white : CCTheme.ink)
+                            .padding(.horizontal, CCTheme.space5)
+                            .padding(.vertical, CCTheme.space3)
+                            .background(filter == option ? CCTheme.navy : CCTheme.fog)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, CCTheme.space5)
         }
     }
-}
 
-#Preview {
-    NavigationStack {
-        GoalsListView()
-            .environment(AppStateManager.shared)
+    private var goalsList: some View {
+        VStack(spacing: 0) {
+            Divider()
+            ForEach(Array(filteredGoals.enumerated()), id: \.element.id) { index, goal in
+                Button {
+                    selectedGoal = goal
+                } label: {
+                    GoalListRow(goal: goal)
+                }
+                .buttonStyle(.plain)
+                if index < filteredGoals.count - 1 {
+                    Divider().padding(.leading, CCTheme.space5)
+                }
+            }
+            Divider()
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space5) {
+            InlineEmptyState(
+                icon: "target",
+                title: "No goals yet",
+                subtitle: "Start tracking what matters most"
+            )
+            Button {
+                showCreateGoal = true
+            } label: {
+                Text("Create a goal")
+            }
+            .buttonStyle(CCPrimaryButtonStyle())
+        }
+        .padding(.horizontal, CCTheme.space5)
     }
 }
