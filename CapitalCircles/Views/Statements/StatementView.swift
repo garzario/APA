@@ -6,6 +6,7 @@ struct StatementView: View {
     @State private var isRefreshing = false
     @State private var errorMessage: String?
     @State private var showInfoSheet = false
+    @State private var expandedInsightId: UUID?
 
     private var statement: SmartStatement? {
         state.currentStatement
@@ -15,11 +16,11 @@ struct StatementView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: CCTheme.space7) {
                 if let statement {
+                    monthPicker
                     heroSection(statement)
-                    refreshCard
+                    insightsSection(statement)
                     narrativeSection(statement)
                     chartSection(statement)
-                    insightsSection(statement)
                 } else {
                     ProgressView()
                         .frame(maxWidth: .infinity)
@@ -32,6 +33,17 @@ struct StatementView: View {
         .background(CCTheme.canvas)
         .navigationTitle("Insights")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showInfoSheet = true
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 18, weight: .regular))
+                        .foregroundStyle(CCTheme.ink)
+                }
+            }
+        }
         .alert("Could not refresh", isPresented: .init(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
@@ -43,6 +55,41 @@ struct StatementView: View {
         .sheet(isPresented: $showInfoSheet) {
             AIInfoSheet()
                 .presentationDetents([.medium])
+        }
+    }
+
+    // MARK: - Month picker (history)
+
+    private var monthPicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: CCTheme.space2) {
+                ForEach(state.statements) { stmt in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            state.selectedStatementId = stmt.id
+                            expandedInsightId = nil
+                        }
+                    } label: {
+                        let isSelected = stmt.id == (state.selectedStatementId ?? state.statements.first?.id)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(stmt.month.uppercased())
+                                .font(.ccCaption)
+                                .foregroundStyle(isSelected ? .white : CCTheme.slate)
+                                .tracking(0.5)
+                            Text("$\(Int(stmt.totalSpent / 1000))K")
+                                .font(.ccHeadline)
+                                .foregroundStyle(isSelected ? .white : CCTheme.ink)
+                                .monospacedDigit()
+                        }
+                        .padding(.horizontal, CCTheme.space4)
+                        .padding(.vertical, CCTheme.space3)
+                        .background(isSelected ? CCTheme.navy : CCTheme.fog)
+                        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, CCTheme.space5)
         }
     }
 
@@ -65,7 +112,7 @@ struct StatementView: View {
                 .monospacedDigit()
 
             HStack(spacing: CCTheme.space2) {
-                Image(systemName: statement.isSpendingUp ? "arrow.up" : "arrow.down")
+                Image(systemName: statement.isSpendingUp ? "arrow.up.right" : "arrow.down.right")
                     .font(.system(size: 12, weight: .semibold))
                 Text("\(abs(Int(statement.comparedToLastMonth)))% vs last month")
                     .font(.ccSubhead)
@@ -75,83 +122,144 @@ struct StatementView: View {
         .padding(.horizontal, CCTheme.space5)
     }
 
-    // MARK: - Refresh Card (explains and offers AI regeneration)
+    // MARK: - Insights (What we noticed) - ABOVE the fold, interactive
 
-    private var refreshCard: some View {
-        Button {
-            Task { await regenerate() }
-        } label: {
-            VStack(alignment: .leading, spacing: CCTheme.space4) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: CCTheme.space2) {
-                        HStack(spacing: CCTheme.space2) {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 13, weight: .semibold))
-                            Text("AI INSIGHTS")
-                                .font(.ccCaption)
-                                .tracking(0.5)
-                        }
-                        .foregroundStyle(.white.opacity(0.85))
-
-                        Text("Fresh take, any time")
-                            .font(.ccTitle)
-                            .foregroundStyle(.white)
-                    }
-                    Spacer()
-                    if isRefreshing {
-                        ProgressView()
-                            .controlSize(.regular)
-                            .tint(.white)
-                    } else {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 44, height: 44)
-                            .background(.white.opacity(0.15))
-                            .clipShape(SwiftUI.Circle())
-                    }
+    private func insightsSection(_ statement: SmartStatement) -> some View {
+        VStack(alignment: .leading, spacing: CCTheme.space4) {
+            HStack {
+                VStack(alignment: .leading, spacing: CCTheme.space1) {
+                    Text("WHAT WE NOTICED")
+                        .font(.ccCaption)
+                        .foregroundStyle(CCTheme.slate)
+                        .tracking(0.5)
+                    Text("AI insights for you")
+                        .font(.ccTitle)
+                        .foregroundStyle(CCTheme.ink)
                 }
-
-                Text("Generate a new summary based on your spending this month. Tap refresh for a different angle on your numbers, tailored to you and your circle.")
-                    .font(.ccFootnote)
-                    .foregroundStyle(.white.opacity(0.9))
-                    .lineSpacing(3)
-
+                Spacer()
                 Button {
-                    showInfoSheet = true
+                    Task { await regenerate() }
                 } label: {
-                    HStack(spacing: 4) {
-                        Text("How it works")
+                    HStack(spacing: 6) {
+                        if isRefreshing {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        Text(isRefreshing ? "Working" : "Refresh")
                             .font(.ccFootnote.bold())
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 11, weight: .semibold))
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(CCTheme.navy)
+                    .padding(.horizontal, CCTheme.space4)
+                    .padding(.vertical, CCTheme.space2 + 2)
+                    .background(CCTheme.fog)
+                    .clipShape(Capsule())
                 }
-                .buttonStyle(.plain)
+                .disabled(isRefreshing)
             }
-            .padding(CCTheme.space5)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(CCTheme.navy)
-            .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusLarge))
+            .padding(.horizontal, CCTheme.space5)
+
+            VStack(spacing: CCTheme.space3) {
+                ForEach(statement.insights) { insight in
+                    insightCard(insight)
+                }
+            }
+            .padding(.horizontal, CCTheme.space5)
         }
-        .buttonStyle(.plain)
-        .disabled(isRefreshing)
-        .padding(.horizontal, CCTheme.space5)
     }
 
-    // MARK: - Narrative
+    private func insightCard(_ insight: Insight) -> some View {
+        let isExpanded = expandedInsightId == insight.id
+
+        return Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                expandedInsightId = isExpanded ? nil : insight.id
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: CCTheme.space3) {
+                HStack(alignment: .top, spacing: CCTheme.space3) {
+                    Image(systemName: iconFor(insight.type))
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(colorFor(insight.type))
+                        .frame(width: 36, height: 36)
+                        .background(colorFor(insight.type).opacity(0.12))
+                        .clipShape(SwiftUI.Circle())
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(insight.title)
+                            .font(.ccBody.bold())
+                            .foregroundStyle(CCTheme.ink)
+                            .multilineTextAlignment(.leading)
+                        Text(insight.description)
+                            .font(.ccFootnote)
+                            .foregroundStyle(CCTheme.slate)
+                            .multilineTextAlignment(.leading)
+                            .lineSpacing(2)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(CCTheme.mist)
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                }
+
+                if isExpanded, let action = insight.actionable, !action.isEmpty {
+                    HStack(spacing: CCTheme.space2) {
+                        Image(systemName: "arrow.right.circle.fill")
+                            .font(.system(size: 13))
+                            .foregroundStyle(CCTheme.navy)
+                        Text(action)
+                            .font(.ccFootnote)
+                            .foregroundStyle(CCTheme.ink)
+                    }
+                    .padding(CCTheme.space3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(CCTheme.cream)
+                    .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusSmall))
+                }
+            }
+            .padding(CCTheme.space4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(CCTheme.canvas)
+            .overlay {
+                RoundedRectangle(cornerRadius: CCTheme.radiusMedium)
+                    .stroke(CCTheme.hairline, lineWidth: 1)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func iconFor(_ type: InsightType) -> String {
+        switch type {
+        case .positive: return "arrow.down.circle"
+        case .warning: return "exclamationmark.circle"
+        case .tip: return "lightbulb"
+        case .milestone: return "flag.checkered"
+        }
+    }
+
+    private func colorFor(_ type: InsightType) -> Color {
+        switch type {
+        case .positive: return CCTheme.positive
+        case .warning: return CCTheme.red
+        case .tip: return CCTheme.navy
+        case .milestone: return CCTheme.gold
+        }
+    }
+
+    // MARK: - Narrative (summary)
 
     private func narrativeSection(_ statement: SmartStatement) -> some View {
         VStack(alignment: .leading, spacing: CCTheme.space3) {
-            HStack(spacing: CCTheme.space2) {
-                Image(systemName: "quote.opening")
-                    .font(.system(size: 12, weight: .medium))
-                Text("SUMMARY")
-                    .font(.ccCaption)
-                    .tracking(0.5)
-            }
-            .foregroundStyle(CCTheme.navy)
+            Text("SUMMARY")
+                .font(.ccCaption)
+                .foregroundStyle(CCTheme.slate)
+                .tracking(0.5)
 
             Text(statement.narrative)
                 .font(.ccBody)
@@ -212,68 +320,6 @@ struct StatementView: View {
         .padding(.vertical, CCTheme.space3)
     }
 
-    // MARK: - Insights
-
-    private func insightsSection(_ statement: SmartStatement) -> some View {
-        CCSection("What we noticed") {
-            VStack(spacing: 0) {
-                Divider()
-                ForEach(Array(statement.insights.enumerated()), id: \.element.id) { index, insight in
-                    insightRow(insight)
-                    if index < statement.insights.count - 1 {
-                        Divider().padding(.leading, CCTheme.space5)
-                    }
-                }
-                Divider()
-            }
-        }
-    }
-
-    private func insightRow(_ insight: Insight) -> some View {
-        HStack(alignment: .top, spacing: CCTheme.space4) {
-            Image(systemName: iconFor(insight.type))
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(colorFor(insight.type))
-                .frame(width: 28, alignment: .center)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(insight.title)
-                    .font(.ccBody)
-                    .foregroundStyle(CCTheme.ink)
-                Text(insight.description)
-                    .font(.ccFootnote)
-                    .foregroundStyle(CCTheme.slate)
-                if let action = insight.actionable, !action.isEmpty {
-                    Text(action)
-                        .font(.ccFootnote)
-                        .foregroundStyle(CCTheme.navy)
-                        .padding(.top, 2)
-                }
-            }
-            Spacer()
-        }
-        .padding(.horizontal, CCTheme.space5)
-        .padding(.vertical, CCTheme.space4)
-    }
-
-    private func iconFor(_ type: InsightType) -> String {
-        switch type {
-        case .positive: return "arrow.down.circle"
-        case .warning: return "exclamationmark.circle"
-        case .tip: return "lightbulb"
-        case .milestone: return "checkmark.circle"
-        }
-    }
-
-    private func colorFor(_ type: InsightType) -> Color {
-        switch type {
-        case .positive: return CCTheme.positive
-        case .warning: return CCTheme.red
-        case .tip: return CCTheme.navy
-        case .milestone: return CCTheme.gold
-        }
-    }
-
     // MARK: - Regenerate
 
     private func regenerate() async {
@@ -281,7 +327,6 @@ struct StatementView: View {
         isRefreshing = true
         defer { isRefreshing = false }
 
-        // Build context from state for a more human, personalized response
         let circle = state.circles.first(where: { $0.type == .family }) ?? state.circles.first
         let context = ClaudeService.Context(
             userName: state.currentUser.name.components(separatedBy: " ").first ?? state.currentUser.name,
@@ -349,17 +394,17 @@ struct AIInfoSheet: View {
                         infoRow(
                             number: "1",
                             title: "Your data stays yours",
-                            body: "Only anonymized spending categories and totals are used to generate insights. Merchant names never leave your device."
+                            body: "Only anonymized spending categories and totals are used. Merchant names never leave your device."
                         )
                         infoRow(
                             number: "2",
                             title: "Tailored to your circle",
-                            body: "Insights reference your circle members and shared goals so the advice feels personal and relevant."
+                            body: "Insights reference your circle members and shared goals so the advice feels personal."
                         )
                         infoRow(
                             number: "3",
                             title: "Fresh every time",
-                            body: "Tap refresh whenever you want a new take on the same data. Different angles, same honesty."
+                            body: "Tap refresh for a new take on the same data. Different angles, same honesty."
                         )
                     }
                 }
