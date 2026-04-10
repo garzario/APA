@@ -22,6 +22,8 @@ struct OnboardingView: View {
     @State private var selectedType: CircleType = .family
     @State private var circleName: String = ""
     @State private var invitedUsers: Set<UUID> = []
+    @State private var emailInvites: [String] = []
+    @State private var pendingEmail: String = ""
     @State private var goalTitle: String = ""
     @State private var goalTargetText: String = ""
     @State private var goalIcon: String = "airplane"
@@ -261,7 +263,7 @@ struct OnboardingView: View {
         }
     }
 
-    // MARK: - Step 5: Members
+    // MARK: - Step 5: Members (invite by email)
 
     private var circleMembersStep: some View {
         VStack(alignment: .leading, spacing: CCTheme.space6) {
@@ -276,66 +278,109 @@ struct OnboardingView: View {
                     .lineSpacing(2)
             }
 
-            Text("Select the people to invite. You can always add more later.")
+            Text("Add emails of the people you want to invite. They will get a link to join. You can always add more later or skip for now.")
                 .font(.ccFootnote)
                 .foregroundStyle(CCTheme.slate)
+                .lineSpacing(3)
 
-            VStack(spacing: CCTheme.space3) {
-                ForEach(state.allUsers.filter { $0.id != state.currentUser.id }) { user in
-                    Button {
-                        if invitedUsers.contains(user.id) {
-                            invitedUsers.remove(user.id)
-                        } else {
-                            invitedUsers.insert(user.id)
-                        }
-                    } label: {
-                        memberInviteCard(user)
-                    }
-                    .buttonStyle(.plain)
+            // Email input
+            HStack(spacing: CCTheme.space2) {
+                TextField("email@example.com", text: $pendingEmail)
+                    .font(.ccBody)
+                    .keyboardType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .padding(CCTheme.space4)
+                    .background(CCTheme.fog)
+                    .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+                    .onSubmit { addEmail() }
+
+                Button {
+                    addEmail()
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 52, height: 52)
+                        .background(isValidEmail(pendingEmail) ? CCTheme.navy : CCTheme.mist)
+                        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
                 }
+                .disabled(!isValidEmail(pendingEmail))
+            }
+
+            // Pending invites list
+            if !emailInvites.isEmpty {
+                VStack(alignment: .leading, spacing: CCTheme.space2) {
+                    Text("PENDING INVITES")
+                        .font(.ccCaption)
+                        .foregroundStyle(CCTheme.slate)
+                        .tracking(0.5)
+
+                    VStack(spacing: CCTheme.space2) {
+                        ForEach(emailInvites, id: \.self) { email in
+                            HStack(spacing: CCTheme.space3) {
+                                ZStack {
+                                    SwiftUI.Circle()
+                                        .fill(CCTheme.cream)
+                                        .frame(width: 40, height: 40)
+                                    Text(String(email.first?.uppercased() ?? "?"))
+                                        .font(.ccHeadline)
+                                        .foregroundStyle(CCTheme.navy)
+                                }
+                                Text(email)
+                                    .font(.ccBody)
+                                    .foregroundStyle(CCTheme.ink)
+                                Spacer()
+                                Button {
+                                    emailInvites.removeAll { $0 == email }
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 18))
+                                        .foregroundStyle(CCTheme.mist)
+                                }
+                            }
+                            .padding(.horizontal, CCTheme.space3)
+                            .padding(.vertical, CCTheme.space2)
+                            .background(CCTheme.canvas)
+                            .overlay {
+                                RoundedRectangle(cornerRadius: CCTheme.radiusMedium)
+                                    .stroke(CCTheme.hairline, lineWidth: 1)
+                            }
+                            .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+                        }
+                    }
+                }
+            }
+
+            // Skip note
+            if emailInvites.isEmpty {
+                HStack(alignment: .top, spacing: CCTheme.space3) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(CCTheme.slate)
+                    Text("No one to invite right now? That's fine. Tap Next to continue solo and add members later from your hub.")
+                        .font(.ccFootnote)
+                        .foregroundStyle(CCTheme.slate)
+                        .lineSpacing(3)
+                }
+                .padding(CCTheme.space4)
+                .background(CCTheme.fog)
+                .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
             }
         }
     }
 
-    private func memberInviteCard(_ user: User) -> some View {
-        let isSelected = invitedUsers.contains(user.id)
-
-        return HStack(spacing: CCTheme.space4) {
-            CCAvatar(user: user, size: 48)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(user.name)
-                    .font(.ccBody.bold())
-                    .foregroundStyle(CCTheme.ink)
-                Text(user.email)
-                    .font(.ccFootnote)
-                    .foregroundStyle(CCTheme.slate)
-            }
-
-            Spacer()
-
-            ZStack {
-                SwiftUI.Circle()
-                    .fill(isSelected ? CCTheme.navy : CCTheme.canvas)
-                    .overlay {
-                        SwiftUI.Circle()
-                            .stroke(isSelected ? CCTheme.navy : CCTheme.hairline, lineWidth: 2)
-                    }
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white)
-                }
-            }
-            .frame(width: 24, height: 24)
+    private func addEmail() {
+        let trimmed = pendingEmail.trimmingCharacters(in: .whitespaces).lowercased()
+        if isValidEmail(trimmed) && !emailInvites.contains(trimmed) {
+            emailInvites.append(trimmed)
+            pendingEmail = ""
         }
-        .padding(CCTheme.space4)
-        .background(isSelected ? CCTheme.cream : CCTheme.canvas)
-        .overlay {
-            RoundedRectangle(cornerRadius: CCTheme.radiusMedium)
-                .stroke(isSelected ? CCTheme.navy : CCTheme.hairline, lineWidth: isSelected ? 2 : 1)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+    }
+
+    private func isValidEmail(_ email: String) -> Bool {
+        let trimmed = email.trimmingCharacters(in: .whitespaces)
+        return trimmed.contains("@") && trimmed.contains(".") && trimmed.count > 5
     }
 
     // MARK: - Step 6: First Goal
@@ -431,15 +476,17 @@ struct OnboardingView: View {
                 .foregroundStyle(CCTheme.ink)
                 .lineSpacing(2)
 
-            Text("\(circleName) is ready. \(invitedUsers.count) \(invitedUsers.count == 1 ? "person" : "people") will be invited to join you in saving for \(goalTitle.isEmpty ? "your goal" : goalTitle).")
+            let inviteCount = emailInvites.count
+            Text("\(circleName) is ready. \(inviteCount > 0 ? "\(inviteCount) \(inviteCount == 1 ? "person" : "people") will receive an invite" : "You can invite members anytime from your hub"). Your first goal is \(goalTitle).")
                 .font(.ccBody)
                 .foregroundStyle(CCTheme.slate)
                 .lineSpacing(5)
 
             VStack(alignment: .leading, spacing: CCTheme.space4) {
                 summaryRow(label: "Circle", value: circleName)
-                summaryRow(label: "Members", value: "\(invitedUsers.count + 1) including you")
-                summaryRow(label: "First goal", value: goalTitle.isEmpty ? "Skipped" : goalTitle)
+                summaryRow(label: "Type", value: selectedType.rawValue)
+                summaryRow(label: "Invites", value: inviteCount > 0 ? "\(inviteCount) pending" : "None yet")
+                summaryRow(label: "First goal", value: goalTitle)
                 if let amount = Double(goalTargetText.replacingOccurrences(of: ",", with: "")), amount > 0 {
                     summaryRow(label: "Target", value: "$\(Int(amount).formatted())")
                 }
@@ -538,25 +585,18 @@ struct OnboardingView: View {
     }
 
     private func finishOnboarding() {
-        // Replace the default circles with the one the user just created.
-        state.circles.removeAll { $0.type == selectedType && $0.name == circleName }
+        // Clear the demo seed circles so the user starts with exactly the circle they created.
+        state.circles.removeAll()
+        state.personalGoals.removeAll()
 
-        // Create circle
+        // Create the circle
         let newCircle = state.createCircle(
             name: circleName,
             type: selectedType,
             iconName: selectedType.icon
         )
 
-        // Add selected members
-        for userId in invitedUsers {
-            if let user = state.allUsers.first(where: { $0.id == userId }) {
-                let role: MemberRole = (selectedType == .family && user.name.contains("Diego")) ? .junior : .member
-                state.addMember(user, to: newCircle.id, role: role)
-            }
-        }
-
-        // Create first goal
+        // Create the first goal
         if let targetAmount = Double(goalTargetText.replacingOccurrences(of: ",", with: "")), targetAmount > 0 {
             _ = state.createGoal(
                 title: goalTitle,
@@ -564,6 +604,15 @@ struct OnboardingView: View {
                 target: targetAmount,
                 deadline: nil,
                 circleId: newCircle.id
+            )
+        }
+
+        // Add a notification for each pending email invite so the user sees activity
+        for email in emailInvites {
+            state.addNotification(
+                title: "Invite sent",
+                body: "\(email) was invited to join \(circleName)",
+                icon: "envelope"
             )
         }
 
