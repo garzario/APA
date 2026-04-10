@@ -1,108 +1,263 @@
 import SwiftUI
 
 struct HomeView: View {
-    private let data = MockDataService.shared
+    @Environment(AppStateManager.self) private var state
+    @State private var showNotifications = false
+    @State private var selectedTransaction: Transaction?
+    @State private var selectedGoal: Goal?
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: CCTheme.paddingLarge) {
-                    // Welcome header
-                    welcomeHeader
-
-                    // Quick stats cards
-                    quickStatsSection
-
-                    // Active goals
-                    activeGoalsSection
-
-                    // Recent transactions
-                    recentTransactionsSection
+                    heroHeader
+                    monthlySpendingCard
+                    quickActions
+                    goalsSection
+                    recentActivitySection
                 }
                 .padding(.horizontal, CCTheme.paddingMedium)
-                .padding(.bottom, CCTheme.paddingLarge)
+                .padding(.bottom, CCTheme.paddingLarge * 2)
             }
             .background(CCTheme.backgroundPrimary)
-            .navigationTitle("Home")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "circle.grid.3x3.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(CCTheme.primaryBlue)
+                        Text("Capital Circles")
+                            .font(.headline)
+                            .foregroundStyle(CCTheme.textPrimary)
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showNotifications = true
+                    } label: {
+                        ZStack(alignment: .topTrailing) {
+                            Image(systemName: "bell.fill")
+                                .foregroundStyle(CCTheme.primaryBlue)
+                                .font(.title3)
+                            if state.unreadNotificationCount > 0 {
+                                SwiftUI.Circle()
+                                    .fill(CCTheme.errorRed)
+                                    .frame(width: 8, height: 8)
+                                    .offset(x: 3, y: -2)
+                            }
+                        }
+                    }
+                }
+            }
+            .sheet(isPresented: $showNotifications) {
+                NotificationsView()
+            }
+            .sheet(item: $selectedTransaction) { transaction in
+                TransactionDetailView(transaction: transaction)
+            }
+            .sheet(item: $selectedGoal) { goal in
+                GoalDetailView(goal: goal)
+            }
         }
     }
 
-    // MARK: - Welcome Header
+    // MARK: - Hero Header
 
-    private var welcomeHeader: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Welcome back,")
-                    .font(.subheadline)
+    private var heroHeader: some View {
+        HStack(alignment: .center, spacing: 14) {
+            Image(systemName: state.currentUser.avatarIcon)
+                .font(.system(size: 44))
+                .foregroundStyle(CCTheme.primaryBlue)
+                .frame(width: 56, height: 56)
+                .background(CCTheme.lightBlue)
+                .clipShape(SwiftUI.Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Welcome back")
+                    .font(.caption)
                     .foregroundStyle(CCTheme.textSecondary)
-                Text(data.currentUser.name.components(separatedBy: " ").first ?? "")
-                    .font(.title.bold())
+                Text(state.currentUser.name.components(separatedBy: " ").first ?? "")
+                    .font(.title2.bold())
                     .foregroundStyle(CCTheme.textPrimary)
             }
             Spacer()
-            Image(systemName: data.currentUser.avatarIcon)
-                .font(.system(size: 32))
-                .foregroundStyle(CCTheme.primaryBlue)
         }
-        .padding(.top, CCTheme.paddingMedium)
+        .padding(.top, 4)
     }
 
-    // MARK: - Quick Stats
+    // MARK: - Monthly Spending Card
 
-    private var quickStatsSection: some View {
+    private var monthlySpendingCard: some View {
+        NavigationLink(destination: StatementView()) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("This month")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.8))
+                        Text("$\(Int(state.totalSpentThisMonth).formatted())")
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                    }
+                    Spacer()
+                    Image(systemName: "sparkles")
+                        .font(.title2)
+                        .foregroundStyle(.white.opacity(0.9))
+                }
+
+                HStack(spacing: 8) {
+                    let change = state.currentStatement?.comparedToLastMonth ?? 0
+                    Image(systemName: change < 0 ? "arrow.down.right" : "arrow.up.right")
+                        .font(.caption.bold())
+                    Text("\(abs(Int(change)))% vs last month")
+                        .font(.caption.bold())
+                    Spacer()
+                    Text("Tap for insights")
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.7))
+                    Image(systemName: "chevron.right")
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+                .foregroundStyle(.white.opacity(0.95))
+                .padding(.vertical, 8)
+                .padding(.horizontal, 10)
+                .background(.white.opacity(0.15))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+            .padding(CCTheme.paddingLarge)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                LinearGradient(
+                    colors: [CCTheme.primaryBlue, CCTheme.accentBlue],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusLarge))
+            .shadow(color: CCTheme.primaryBlue.opacity(0.3), radius: 16, y: 6)
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Quick Actions
+
+    private var quickActions: some View {
         HStack(spacing: 12) {
-            StatCard(
-                title: "This Month",
-                value: "$\(Int(data.currentStatement.totalSpent).formatted())",
-                subtitle: "\(Int(data.currentStatement.comparedToLastMonth))% vs last month",
-                icon: "chart.line.downtrend.xyaxis",
-                color: CCTheme.successGreen
-            )
-            StatCard(
-                title: "Circles",
-                value: "\(data.circles.count)",
-                subtitle: "Active groups",
-                icon: "person.3.fill",
-                color: CCTheme.primaryBlue
-            )
+            NavigationLink(destination: CardSelectorView()) {
+                quickActionCard(
+                    icon: "creditcard.fill",
+                    title: "Card optimizer",
+                    subtitle: "Best card per purchase",
+                    color: CCTheme.accentBlue
+                )
+            }
+            NavigationLink(destination: CirclesListView()) {
+                quickActionCard(
+                    icon: "person.3.fill",
+                    title: "My circles",
+                    subtitle: "\(state.circles.count) active",
+                    color: CCTheme.successGreen
+                )
+            }
         }
+        .buttonStyle(.plain)
     }
 
-    // MARK: - Active Goals
+    private func quickActionCard(icon: String, title: String, subtitle: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(color)
+                .frame(width: 36, height: 36)
+                .background(color.opacity(0.15))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            Text(title)
+                .font(.subheadline.bold())
+                .foregroundStyle(CCTheme.textPrimary)
+            Text(subtitle)
+                .font(.caption)
+                .foregroundStyle(CCTheme.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(CCTheme.paddingMedium)
+        .background(CCTheme.backgroundCard)
+        .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
+        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+    }
 
-    private var activeGoalsSection: some View {
+    // MARK: - Goals Section
+
+    private var goalsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "Active Goals", action: nil)
+            HStack {
+                Text("Active goals")
+                    .font(.title3.bold())
+                    .foregroundStyle(CCTheme.textPrimary)
+                Spacer()
+                NavigationLink(destination: GoalsListView()) {
+                    Text("See all")
+                        .font(.subheadline)
+                        .foregroundStyle(CCTheme.accentBlue)
+                }
+            }
 
-            ForEach(allGoals.prefix(3)) { goal in
-                GoalProgressCard(goal: goal)
+            let goals = state.allGoals.sorted { $0.progressPercentage > $1.progressPercentage }.prefix(3)
+            if goals.isEmpty {
+                EmptyStateCard(
+                    icon: "target",
+                    title: "No goals yet",
+                    message: "Create your first goal to start tracking progress"
+                )
+            } else {
+                ForEach(Array(goals)) { goal in
+                    Button {
+                        selectedGoal = goal
+                    } label: {
+                        GoalProgressCard(goal: goal)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
     }
 
-    // MARK: - Recent Transactions
+    // MARK: - Recent Activity
 
-    private var recentTransactionsSection: some View {
+    private var recentActivitySection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "Recent Activity", action: nil)
-
-            ForEach(data.currentUser.transactions.prefix(5)) { transaction in
-                TransactionRow(transaction: transaction)
+            HStack {
+                Text("Recent activity")
+                    .font(.title3.bold())
+                    .foregroundStyle(CCTheme.textPrimary)
+                Spacer()
             }
-        }
-    }
 
-    private var allGoals: [Goal] {
-        var goals: [Goal] = []
-        goals.append(data.personalGoal)
-        for circle in data.circles {
-            goals.append(contentsOf: circle.goals)
+            VStack(spacing: 0) {
+                ForEach(state.transactions.prefix(5)) { transaction in
+                    Button {
+                        selectedTransaction = transaction
+                    } label: {
+                        TransactionRow(transaction: transaction)
+                    }
+                    .buttonStyle(.plain)
+                    if transaction.id != state.transactions.prefix(5).last?.id {
+                        Divider()
+                            .padding(.leading, 56)
+                    }
+                }
+            }
+            .padding(.horizontal, CCTheme.paddingMedium)
+            .background(CCTheme.backgroundCard)
+            .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
+            .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
         }
-        return goals
     }
 }
 
 #Preview {
     HomeView()
+        .environment(AppStateManager.shared)
         .environment(AppState())
 }

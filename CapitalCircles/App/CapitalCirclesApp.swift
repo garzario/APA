@@ -3,16 +3,20 @@ import SwiftUI
 @main
 struct CapitalCirclesApp: App {
     @State private var appState = AppState()
+    @State private var stateManager = AppStateManager.shared
 
     var body: some Scene {
         WindowGroup {
-            if appState.hasCompletedOnboarding {
-                ContentView()
-                    .environment(appState)
-            } else {
-                OnboardingView()
-                    .environment(appState)
+            Group {
+                if appState.hasCompletedOnboarding {
+                    ContentView()
+                } else {
+                    OnboardingView()
+                }
             }
+            .environment(appState)
+            .environment(stateManager)
+            .tint(CCTheme.primaryBlue)
         }
     }
 }

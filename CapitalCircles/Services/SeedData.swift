@@ -1,0 +1,269 @@
+import Foundation
+
+/// Seed data used to populate AppStateManager on first launch.
+/// In production this would come from the backend API after authentication.
+enum SeedData {
+
+    struct SeedPayload {
+        let currentUser: User
+        let allUsers: [User]
+        let circles: [Circle]
+        let personalGoals: [Goal]
+        let transactions: [Transaction]
+        let statement: SmartStatement
+        let notifications: [AppNotification]
+    }
+
+    static func generate() -> SeedPayload {
+        // Card templates
+        let ventureX = Card(
+            id: UUID(uuidString: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")!,
+            name: "Venture X",
+            lastFourDigits: "4821",
+            cardType: .ventureX,
+            currentBalance: 2340.50,
+            creditLimit: 15000,
+            rewardsBalance: 45200
+        )
+
+        let savor = Card(
+            id: UUID(uuidString: "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB")!,
+            name: "Savor One",
+            lastFourDigits: "7193",
+            cardType: .savor,
+            currentBalance: 890.25,
+            creditLimit: 8000,
+            rewardsBalance: 12500
+        )
+
+        let quicksilver = Card(
+            id: UUID(uuidString: "CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC")!,
+            name: "Quicksilver",
+            lastFourDigits: "3056",
+            cardType: .quicksilver,
+            currentBalance: 1200,
+            creditLimit: 10000,
+            rewardsBalance: 8900
+        )
+
+        let venture = Card(
+            id: UUID(uuidString: "DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD")!,
+            name: "Venture",
+            lastFourDigits: "9247",
+            cardType: .venture,
+            currentBalance: 3100,
+            creditLimit: 12000,
+            rewardsBalance: 32000
+        )
+
+        // Transactions
+        let transactions: [Transaction] = [
+            Transaction(id: UUID(), merchantName: "Starbucks", amount: 89, category: .dining, date: day(-1), cardId: savor.id),
+            Transaction(id: UUID(), merchantName: "Uber", amount: 245, category: .transport, date: day(-2), cardId: ventureX.id),
+            Transaction(id: UUID(), merchantName: "HEB", amount: 1250, category: .groceries, date: day(-3), cardId: savor.id),
+            Transaction(id: UUID(), merchantName: "Netflix", amount: 199, category: .entertainment, date: day(-5), cardId: savor.id),
+            Transaction(id: UUID(), merchantName: "Amazon", amount: 850, category: .shopping, date: day(-6), cardId: ventureX.id),
+            Transaction(id: UUID(), merchantName: "Marriott", amount: 3200, category: .travel, date: day(-7), cardId: ventureX.id),
+            Transaction(id: UUID(), merchantName: "Cinepolis", amount: 320, category: .entertainment, date: day(-8), cardId: savor.id),
+            Transaction(id: UUID(), merchantName: "Soriana", amount: 980, category: .groceries, date: day(-9), cardId: savor.id),
+            Transaction(id: UUID(), merchantName: "La Nacional", amount: 650, category: .dining, date: day(-10), cardId: savor.id),
+            Transaction(id: UUID(), merchantName: "CFE", amount: 420, category: .bills, date: day(-12), cardId: ventureX.id),
+            Transaction(id: UUID(), merchantName: "Spotify", amount: 169, category: .entertainment, date: day(-14), cardId: savor.id),
+            Transaction(id: UUID(), merchantName: "Oxxo", amount: 250, category: .groceries, date: day(-15), cardId: savor.id),
+        ]
+
+        // Users
+        let patricio = User(
+            id: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
+            name: "Patricio Garza",
+            email: "patriciogzaa@gmail.com",
+            avatarIcon: "person.circle.fill",
+            cards: [ventureX, savor],
+            transactions: transactions,
+            joinedDate: Date(timeIntervalSinceNow: -86400 * 300)
+        )
+
+        let maria = User(
+            id: UUID(uuidString: "22222222-2222-2222-2222-222222222222")!,
+            name: "Maria Garza",
+            email: "maria.garza@gmail.com",
+            avatarIcon: "person.circle",
+            cards: [quicksilver],
+            transactions: [],
+            joinedDate: Date(timeIntervalSinceNow: -86400 * 300)
+        )
+
+        let diego = User(
+            id: UUID(uuidString: "33333333-3333-3333-3333-333333333333")!,
+            name: "Diego Garza",
+            email: "diego.garza@gmail.com",
+            avatarIcon: "figure.child.circle.fill",
+            cards: [],
+            transactions: [],
+            joinedDate: Date(timeIntervalSinceNow: -86400 * 180)
+        )
+
+        let adan = User(
+            id: UUID(uuidString: "44444444-4444-4444-4444-444444444444")!,
+            name: "Adan Gonzalez",
+            email: "ehecatl16@hotmail.com",
+            avatarIcon: "person.fill",
+            cards: [venture],
+            transactions: [],
+            joinedDate: Date(timeIntervalSinceNow: -86400 * 250)
+        )
+
+        let alana = User(
+            id: UUID(uuidString: "55555555-5555-5555-5555-555555555555")!,
+            name: "Alana Martinez",
+            email: "A00841524@tec.mx",
+            avatarIcon: "person.crop.circle.fill",
+            cards: [savor],
+            transactions: [],
+            joinedDate: Date(timeIntervalSinceNow: -86400 * 250)
+        )
+
+        // Circles
+        let familyCircleId = UUID(uuidString: "EEEEEEEE-EEEE-EEEE-EEEE-EEEEEEEEEEEE")!
+        let teamCircleId = UUID(uuidString: "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF")!
+
+        let vacationGoal = Goal(
+            id: UUID(),
+            title: "Cancun Vacation",
+            iconName: "sun.max.fill",
+            targetAmount: 45000,
+            currentAmount: 28500,
+            deadline: Date(timeIntervalSinceNow: 86400 * 90),
+            isShared: true,
+            circleId: familyCircleId,
+            contributions: [
+                Contribution(id: UUID(), userId: patricio.id, userName: "Patricio", amount: 15000, date: day(-30)),
+                Contribution(id: UUID(), userId: maria.id, userName: "Maria", amount: 13500, date: day(-20)),
+            ],
+            createdAt: day(-120)
+        )
+
+        let emergencyGoal = Goal(
+            id: UUID(),
+            title: "Emergency Fund",
+            iconName: "shield.fill",
+            targetAmount: 60000,
+            currentAmount: 42000,
+            deadline: nil,
+            isShared: true,
+            circleId: familyCircleId,
+            contributions: [
+                Contribution(id: UUID(), userId: patricio.id, userName: "Patricio", amount: 22000, date: day(-60)),
+                Contribution(id: UUID(), userId: maria.id, userName: "Maria", amount: 20000, date: day(-50)),
+            ],
+            createdAt: day(-180)
+        )
+
+        let teamGoal = Goal(
+            id: UUID(),
+            title: "Team Trip CDMX",
+            iconName: "airplane",
+            targetAmount: 15000,
+            currentAmount: 9200,
+            deadline: Date(timeIntervalSinceNow: 86400 * 60),
+            isShared: true,
+            circleId: teamCircleId,
+            contributions: [
+                Contribution(id: UUID(), userId: patricio.id, userName: "Patricio", amount: 3500, date: day(-30)),
+                Contribution(id: UUID(), userId: adan.id, userName: "Adan", amount: 3200, date: day(-25)),
+                Contribution(id: UUID(), userId: alana.id, userName: "Alana", amount: 2500, date: day(-20)),
+            ],
+            createdAt: day(-90)
+        )
+
+        let familyCircle = Circle(
+            id: familyCircleId,
+            name: "Garza Family",
+            type: .family,
+            iconName: "house.fill",
+            members: [
+                CircleMember(id: UUID(), user: patricio, role: .admin, visibilityLevel: .goalsOnly, joinedDate: day(-300)),
+                CircleMember(id: UUID(), user: maria, role: .admin, visibilityLevel: .goalsOnly, joinedDate: day(-300)),
+                CircleMember(id: UUID(), user: diego, role: .junior, visibilityLevel: .goalsOnly, joinedDate: day(-180)),
+            ],
+            goals: [vacationGoal, emergencyGoal],
+            createdAt: day(-300)
+        )
+
+        let teamCircle = Circle(
+            id: teamCircleId,
+            name: "Team APA",
+            type: .friends,
+            iconName: "person.3.fill",
+            members: [
+                CircleMember(id: UUID(), user: patricio, role: .admin, visibilityLevel: .goalsOnly, joinedDate: day(-90)),
+                CircleMember(id: UUID(), user: adan, role: .member, visibilityLevel: .goalsOnly, joinedDate: day(-90)),
+                CircleMember(id: UUID(), user: alana, role: .member, visibilityLevel: .goalsOnly, joinedDate: day(-90)),
+            ],
+            goals: [teamGoal],
+            createdAt: day(-90)
+        )
+
+        // Personal goal
+        let personalGoal = Goal(
+            id: UUID(),
+            title: "MacBook Pro",
+            iconName: "laptopcomputer",
+            targetAmount: 35000,
+            currentAmount: 21000,
+            deadline: Date(timeIntervalSinceNow: 86400 * 120),
+            isShared: false,
+            circleId: nil,
+            contributions: [
+                Contribution(id: UUID(), userId: patricio.id, userName: "Patricio", amount: 21000, date: day(-45)),
+            ],
+            createdAt: day(-60)
+        )
+
+        // Statement
+        let statement = SmartStatement(
+            id: UUID(),
+            month: "April",
+            year: 2026,
+            narrative: "You are doing great this month! Your spending is 12% lower than March, mainly driven by less dining out. At this pace, you will hit your MacBook Pro goal two months ahead of schedule.",
+            totalSpent: 8623.00,
+            insights: [
+                Insight(id: UUID(), title: "Dining down 28%", description: "You spent $2,100 less on dining compared to last month", type: .positive, actionable: nil),
+                Insight(id: UUID(), title: "Subscription increase", description: "Your streaming services increased by $150 this month", type: .warning, actionable: "Review your active subscriptions"),
+                Insight(id: UUID(), title: "Savings acceleration", description: "Save $3,000 extra this month to hit your MacBook goal early", type: .tip, actionable: "Set up automatic transfers"),
+                Insight(id: UUID(), title: "Vacation goal at 63%", description: "Your family vacation goal is on track for July", type: .milestone, actionable: nil),
+            ],
+            categoryBreakdown: [
+                CategorySpending(id: UUID(), category: .dining, amount: 1969, percentage: 22.8, changeFromLastMonth: -28),
+                CategorySpending(id: UUID(), category: .groceries, amount: 1778, percentage: 20.6, changeFromLastMonth: 15),
+                CategorySpending(id: UUID(), category: .transport, amount: 1354, percentage: 15.7, changeFromLastMonth: -5),
+                CategorySpending(id: UUID(), category: .entertainment, amount: 983, percentage: 11.4, changeFromLastMonth: 8),
+                CategorySpending(id: UUID(), category: .shopping, amount: 845, percentage: 9.8, changeFromLastMonth: -12),
+                CategorySpending(id: UUID(), category: .bills, amount: 1121, percentage: 13.0, changeFromLastMonth: 2),
+                CategorySpending(id: UUID(), category: .other, amount: 573, percentage: 6.7, changeFromLastMonth: -3),
+            ],
+            comparedToLastMonth: -12
+        )
+
+        // Notifications
+        let notifications: [AppNotification] = [
+            AppNotification(id: UUID(), title: "Vacation goal updated", body: "Maria added $500 to Cancun Vacation", icon: "star.fill", date: Date(timeIntervalSinceNow: -3600), isRead: false),
+            AppNotification(id: UUID(), title: "Smart insight ready", body: "Your April Smart Statement is available", icon: "sparkles", date: Date(timeIntervalSinceNow: -7200), isRead: false),
+            AppNotification(id: UUID(), title: "Dining down 28%", body: "Great job cutting dining expenses this month", icon: "checkmark.circle.fill", date: Date(timeIntervalSinceNow: -86400), isRead: true),
+        ]
+
+        return SeedPayload(
+            currentUser: patricio,
+            allUsers: [patricio, maria, diego, adan, alana],
+            circles: [familyCircle, teamCircle],
+            personalGoals: [personalGoal],
+            transactions: transactions,
+            statement: statement,
+            notifications: notifications
+        )
+    }
+
+    private static func day(_ offset: Int) -> Date {
+        Calendar.current.date(byAdding: .day, value: offset, to: Date()) ?? Date()
+    }
+}
