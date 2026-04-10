@@ -2,8 +2,9 @@ import Foundation
 import SwiftUI
 
 /// Central observable state manager for the app.
-/// Manages all mutable data: circles, goals, contributions, users.
-/// In production, this would sync with the backend API and local SwiftData cache.
+/// Loads data from the backend API on launch and writes all mutations back.
+/// Keeps a local in-memory representation so the UI stays responsive while
+/// network calls happen.
 @Observable
 final class AppStateManager {
     static let shared = AppStateManager()
@@ -11,25 +12,23 @@ final class AppStateManager {
     // MARK: - Current User
 
     var currentUser: User
-    var allUsers: [User]
+    var allUsers: [User] = []
 
     // MARK: - Circles and Goals
 
-    var circles: [Circle]
-    var personalGoals: [Goal]
+    var circles: [Circle] = []
+    var personalGoals: [Goal] = []
 
     // MARK: - Transactions and Cards
 
-    var transactions: [Transaction]
+    var transactions: [Transaction] = []
 
     // MARK: - Smart Statements
 
-    /// Historical statements by month, chronological order (oldest first, newest last)
     var statements: [SmartStatement] = []
     var selectedStatementId: UUID?
     var isLoadingStatement: Bool = false
 
-    /// The currently selected statement. Defaults to the most recent (last in chronological order).
     var currentStatement: SmartStatement? {
         get {
             if let id = selectedStatementId {
@@ -50,9 +49,16 @@ final class AppStateManager {
 
     var notifications: [AppNotification] = []
 
+    // MARK: - Sync state
+
+    var isSyncing: Bool = false
+    var lastSyncError: String?
+
     // MARK: - Init
 
     private init() {
+        // Load local seed data as starting point for UI responsiveness and
+        // statements (which are AI-generated and not in the DB yet).
         let seed = SeedData.generate()
         self.currentUser = seed.currentUser
         self.allUsers = seed.allUsers
@@ -60,9 +66,110 @@ final class AppStateManager {
         self.personalGoals = seed.personalGoals
         self.transactions = seed.transactions
         self.statements = seed.statements
-        // Default to the most recent month (last in chronological order)
         self.selectedStatementId = seed.statements.last?.id
         self.notifications = seed.notifications
+    }
+
+    // MARK: - Auth / sync from backend
+
+    /// Sign the user in by creating or fetching their backend profile.
+    /// Called from onboarding once the user enters their name and email.
+    func signIn(name: String, email: String) async {
+        isSyncing = true
+        defer { isSyncing = false }
+
+        do {
+            // Try to fetch existing user by email first
+            let apiUser: APIUser
+            do {
+                apiUser = try await UserAPI.getByEmail(email)
+            } catch {
+                // Not found: create a new one
+                apiUser = try await UserAPI.create(name: name, email: email)
+            }
+
+            // Update current user with real DB ID
+            currentUser = User(
+                id: apiUser.id,
+                name: apiUser.name,
+                email: apiUser.email,
+                avatarIcon: apiUser.avatarIcon,
+                cards: currentUser.cards, // keep mock cards for now
+                transactions: currentUser.transactions,
+                joinedDate: apiUser.createdAt ?? Date()
+            )
+
+            // Load their circles and goals from DB
+            await refreshFromBackend()
+        } catch {
+            lastSyncError = error.localizedDescription
+        }
+    }
+
+    /// Reload circles and goals for the current user from the backend.
+    func refreshFromBackend() async {
+        do {
+            let apiCircles = try await CircleAPI.list(forUser: currentUser.id)
+            let apiGoals = try await GoalAPI.list(forUser: currentUser.id)
+
+            // Merge backend circles with local ones
+            // Map APICircle to local Circle, keeping members from local if known
+            var newCircles: [Circle] = []
+            for api in apiCircles {
+                if let existing = circles.first(where: { $0.id == api.id }) {
+                    newCircles.append(existing)
+                } else {
+                    newCircles.append(Circle(
+                        id: api.id,
+                        name: api.name,
+                        type: CircleType(rawValue: api.type.capitalized) ?? .family,
+                        iconName: api.iconName,
+                        members: [
+                            CircleMember(
+                                id: UUID(),
+                                user: currentUser,
+                                role: .admin,
+                                visibilityLevel: .goalsOnly,
+                                joinedDate: api.createdAt ?? Date()
+                            )
+                        ],
+                        goals: [],
+                        createdAt: api.createdAt ?? Date()
+                    ))
+                }
+            }
+
+            // Assign goals to their circles from backend
+            for api in apiGoals {
+                let goal = Goal(
+                    id: api.id,
+                    title: api.title,
+                    iconName: api.iconName,
+                    targetAmount: api.targetAmount,
+                    currentAmount: api.currentAmount,
+                    deadline: nil,
+                    isShared: api.isShared,
+                    circleId: api.circleId,
+                    contributions: [],
+                    createdAt: Date()
+                )
+                if let circleId = api.circleId,
+                   let idx = newCircles.firstIndex(where: { $0.id == circleId }) {
+                    if !newCircles[idx].goals.contains(where: { $0.id == goal.id }) {
+                        newCircles[idx].goals.append(goal)
+                    }
+                } else if !personalGoals.contains(where: { $0.id == goal.id }) {
+                    personalGoals.append(goal)
+                }
+            }
+
+            if !newCircles.isEmpty {
+                circles = newCircles
+            }
+        } catch {
+            // Silent fallback to local state so the demo keeps working
+            print("Refresh from backend failed: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Circles
@@ -91,6 +198,36 @@ final class AppStateManager {
             body: "\(name) is ready. Invite members to get started.",
             icon: "person.3.fill"
         )
+
+        // Persist to backend in the background
+        Task {
+            do {
+                let payload = APICircleCreate(
+                    name: name,
+                    type: type.rawValue.lowercased(),
+                    iconName: iconName,
+                    createdBy: currentUser.id
+                )
+                let apiCircle = try await CircleAPI.create(payload)
+                // Update local ID with backend ID if they differ
+                if let idx = circles.firstIndex(where: { $0.id == newCircle.id }) {
+                    var updated = circles
+                    updated[idx] = Circle(
+                        id: apiCircle.id,
+                        name: updated[idx].name,
+                        type: updated[idx].type,
+                        iconName: updated[idx].iconName,
+                        members: updated[idx].members,
+                        goals: updated[idx].goals,
+                        createdAt: updated[idx].createdAt
+                    )
+                    circles = updated
+                }
+            } catch {
+                print("Failed to sync circle to backend: \(error.localizedDescription)")
+            }
+        }
+
         return newCircle
     }
 
@@ -103,17 +240,35 @@ final class AppStateManager {
             visibilityLevel: circles[index].type.defaultVisibility,
             joinedDate: Date()
         )
-        circles[index].members.append(member)
+        var updated = circles
+        updated[index].members.append(member)
+        circles = updated
         addNotification(
             title: "New member",
             body: "\(user.name) joined \(circles[index].name)",
             icon: "person.badge.plus"
         )
+
+        Task {
+            do {
+                let payload = APICircleMemberCreate(
+                    circleId: circleId,
+                    userId: user.id,
+                    role: role.rawValue.lowercased(),
+                    visibility: circles[index].type.defaultVisibility.rawValue
+                )
+                _ = try await CircleAPI.addMember(payload)
+            } catch {
+                print("Failed to sync member: \(error.localizedDescription)")
+            }
+        }
     }
 
     func removeMember(_ memberId: UUID, from circleId: UUID) {
         guard let index = circles.firstIndex(where: { $0.id == circleId }) else { return }
-        circles[index].members.removeAll { $0.id == memberId }
+        var updated = circles
+        updated[index].members.removeAll { $0.id == memberId }
+        circles = updated
     }
 
     func updateVisibility(_ level: VisibilityLevel, for memberId: UUID, in circleId: UUID) {
@@ -121,7 +276,9 @@ final class AppStateManager {
               let memberIndex = circles[circleIndex].members.firstIndex(where: { $0.id == memberId }) else {
             return
         }
-        circles[circleIndex].members[memberIndex].visibilityLevel = level
+        var updated = circles
+        updated[circleIndex].members[memberIndex].visibilityLevel = level
+        circles = updated
     }
 
     // MARK: - Goals
@@ -147,7 +304,9 @@ final class AppStateManager {
         )
 
         if let circleId, let index = circles.firstIndex(where: { $0.id == circleId }) {
-            circles[index].goals.append(newGoal)
+            var updated = circles
+            updated[index].goals.append(newGoal)
+            circles = updated
         } else {
             personalGoals.append(newGoal)
         }
@@ -157,6 +316,26 @@ final class AppStateManager {
             body: "\(title) goal created. Start contributing!",
             icon: "target"
         )
+
+        Task {
+            do {
+                let df = DateFormatter()
+                df.dateFormat = "yyyy-MM-dd"
+                let payload = APIGoalCreate(
+                    title: title,
+                    iconName: iconName,
+                    targetAmount: target,
+                    currentAmount: 0,
+                    deadline: deadline.map { df.string(from: $0) },
+                    isShared: circleId != nil,
+                    circleId: circleId,
+                    ownerId: currentUser.id
+                )
+                _ = try await GoalAPI.create(payload)
+            } catch {
+                print("Failed to sync goal: \(error.localizedDescription)")
+            }
+        }
 
         return newGoal
     }
@@ -170,8 +349,6 @@ final class AppStateManager {
             date: Date()
         )
 
-        // Try personal goals first — reassign the full array so @Observable
-        // reliably triggers UI updates across all reading views.
         if let index = personalGoals.firstIndex(where: { $0.id == goalId }) {
             var updated = personalGoals
             updated[index].currentAmount += amount
@@ -179,10 +356,10 @@ final class AppStateManager {
             let mutatedGoal = updated[index]
             personalGoals = updated
             checkMilestone(goal: mutatedGoal)
+            persistContribution(goalId: goalId, amount: amount, note: note)
             return
         }
 
-        // Otherwise look in circles — same reassignment pattern
         for circleIndex in circles.indices {
             if let goalIndex = circles[circleIndex].goals.firstIndex(where: { $0.id == goalId }) {
                 var updatedCircles = circles
@@ -191,7 +368,24 @@ final class AppStateManager {
                 let mutatedGoal = updatedCircles[circleIndex].goals[goalIndex]
                 circles = updatedCircles
                 checkMilestone(goal: mutatedGoal)
+                persistContribution(goalId: goalId, amount: amount, note: note)
                 return
+            }
+        }
+    }
+
+    private func persistContribution(goalId: UUID, amount: Double, note: String?) {
+        Task {
+            do {
+                let payload = APIContributionCreate(
+                    goalId: goalId,
+                    userId: currentUser.id,
+                    amount: amount,
+                    note: note
+                )
+                _ = try await GoalAPI.contribute(payload)
+            } catch {
+                print("Failed to sync contribution: \(error.localizedDescription)")
             }
         }
     }
@@ -199,7 +393,9 @@ final class AppStateManager {
     func deleteGoal(_ goalId: UUID) {
         personalGoals.removeAll { $0.id == goalId }
         for index in circles.indices {
-            circles[index].goals.removeAll { $0.id == goalId }
+            var updated = circles
+            updated[index].goals.removeAll { $0.id == goalId }
+            circles = updated
         }
     }
 

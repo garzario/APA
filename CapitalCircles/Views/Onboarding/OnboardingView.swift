@@ -11,6 +11,7 @@ struct OnboardingView: View {
     enum OnboardingStep: Int, CaseIterable {
         case welcome
         case intro
+        case signIn
         case circleType
         case circleName
         case circleMembers
@@ -19,6 +20,10 @@ struct OnboardingView: View {
     }
 
     // Form state
+    @State private var myName: String = ""
+    @State private var myEmail: String = ""
+    @State private var isSigningIn: Bool = false
+    @State private var signInError: String?
     @State private var selectedType: CircleType = .family
     @State private var circleName: String = ""
     @State private var invitedUsers: Set<UUID> = []
@@ -37,6 +42,7 @@ struct OnboardingView: View {
                     switch step {
                     case .welcome: welcomeStep
                     case .intro: introStep
+                    case .signIn: signInStep
                     case .circleType: circleTypeStep
                     case .circleName: circleNameStep
                     case .circleMembers: circleMembersStep
@@ -149,7 +155,77 @@ struct OnboardingView: View {
         }
     }
 
-    // MARK: - Step 3: Circle Type
+    // MARK: - Step 3: Sign In (name + email saved to backend)
+
+    private var signInStep: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space6) {
+            VStack(alignment: .leading, spacing: CCTheme.space2) {
+                Text("LET'S MEET")
+                    .font(.ccCaption)
+                    .foregroundStyle(CCTheme.slate)
+                    .tracking(0.5)
+                Text("Tell us who\nyou are")
+                    .font(.system(size: 36, weight: .bold))
+                    .foregroundStyle(CCTheme.ink)
+                    .lineSpacing(2)
+            }
+
+            VStack(alignment: .leading, spacing: CCTheme.space2) {
+                Text("YOUR NAME")
+                    .font(.ccCaption)
+                    .foregroundStyle(CCTheme.slate)
+                    .tracking(0.5)
+                TextField("e.g. Patricio Garza", text: $myName)
+                    .font(.ccBody)
+                    .padding(CCTheme.space4)
+                    .background(CCTheme.fog)
+                    .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+                    .textInputAutocapitalization(.words)
+                    .autocorrectionDisabled()
+            }
+
+            VStack(alignment: .leading, spacing: CCTheme.space2) {
+                Text("YOUR EMAIL")
+                    .font(.ccCaption)
+                    .foregroundStyle(CCTheme.slate)
+                    .tracking(0.5)
+                TextField("you@example.com", text: $myEmail)
+                    .font(.ccBody)
+                    .padding(CCTheme.space4)
+                    .background(CCTheme.fog)
+                    .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+                    .keyboardType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+            }
+
+            if let signInError {
+                HStack(alignment: .top, spacing: CCTheme.space2) {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.system(size: 13))
+                        .foregroundStyle(CCTheme.red)
+                    Text(signInError)
+                        .font(.ccFootnote)
+                        .foregroundStyle(CCTheme.red)
+                }
+            }
+
+            HStack(alignment: .top, spacing: CCTheme.space3) {
+                Image(systemName: "lock.shield")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(CCTheme.slate)
+                Text("Your info is stored securely in the Capital Circles database. You can invite people with any email and they will join with their own account.")
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+                    .lineSpacing(3)
+            }
+            .padding(CCTheme.space4)
+            .background(CCTheme.fog)
+            .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+        }
+    }
+
+    // MARK: - Step 4: Circle Type
 
     private var circleTypeStep: some View {
         VStack(alignment: .leading, spacing: CCTheme.space6) {
@@ -618,6 +694,7 @@ struct OnboardingView: View {
         switch step {
         case .welcome: return "Get started"
         case .intro: return "Continue"
+        case .signIn: return isSigningIn ? "Signing in..." : "Continue"
         case .circleType: return "Next"
         case .circleName: return "Next"
         case .circleMembers: return "Next"
@@ -629,6 +706,10 @@ struct OnboardingView: View {
     private var canAdvance: Bool {
         switch step {
         case .welcome, .intro, .circleType: return true
+        case .signIn:
+            let hasName = !myName.trimmingCharacters(in: .whitespaces).isEmpty
+            let hasValidEmail = myEmail.contains("@") && myEmail.contains(".") && myEmail.count > 5
+            return hasName && hasValidEmail && !isSigningIn
         case .circleName: return !circleName.trimmingCharacters(in: .whitespaces).isEmpty
         case .circleMembers: return true
         case .firstGoal:
@@ -644,9 +725,35 @@ struct OnboardingView: View {
             finishOnboarding()
             return
         }
+        if step == .signIn {
+            signIn()
+            return
+        }
         if let next = OnboardingStep(rawValue: step.rawValue + 1) {
             withAnimation(.easeInOut(duration: 0.25)) {
                 step = next
+            }
+        }
+    }
+
+    private func signIn() {
+        isSigningIn = true
+        signInError = nil
+        Task {
+            await state.signIn(name: myName.trimmingCharacters(in: .whitespaces),
+                               email: myEmail.trimmingCharacters(in: .whitespaces).lowercased())
+            await MainActor.run {
+                isSigningIn = false
+                if let err = state.lastSyncError {
+                    signInError = "Could not reach the server. Continuing in offline mode."
+                    state.lastSyncError = nil
+                }
+                // Always advance (offline mode keeps local state usable)
+                if let next = OnboardingStep(rawValue: step.rawValue + 1) {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        step = next
+                    }
+                }
             }
         }
     }

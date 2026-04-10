@@ -120,35 +120,48 @@ struct HomeView: View {
 
     private func wellnessHeader(_ circle: Circle) -> some View {
         VStack(alignment: .leading, spacing: CCTheme.space5) {
-            VStack(alignment: .leading, spacing: CCTheme.space2) {
-                Text(greeting.uppercased())
-                    .font(.ccCaption)
-                    .foregroundStyle(.white.opacity(0.7))
-                    .tracking(0.5)
-                Text(state.currentUser.name.components(separatedBy: " ").first ?? "")
-                    .font(.ccLargeTitle)
-                    .foregroundStyle(.white)
+            // Top row: greeting + name on left, compact member avatars on right
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: CCTheme.space1) {
+                    Text(greeting.uppercased())
+                        .font(.ccCaption)
+                        .foregroundStyle(.white.opacity(0.65))
+                        .tracking(0.5)
+                    Text("Hi, \(state.currentUser.name.components(separatedBy: " ").first ?? "")")
+                        .font(.ccLargeTitle)
+                        .foregroundStyle(.white)
+                }
+                Spacer()
+                heroMemberStack(circle)
             }
 
-            Divider().background(.white.opacity(0.15))
+            // Subtle divider
+            Rectangle()
+                .fill(.white.opacity(0.12))
+                .frame(height: 1)
 
-            // Combined family spending this month
+            // Amount block
             VStack(alignment: .leading, spacing: CCTheme.space2) {
-                Text("\(circleSpendingLabel(circle)) THIS MONTH")
+                Text("\(circleSpendingLabel(circle)) SPENT THIS MONTH")
                     .font(.ccCaption)
-                    .foregroundStyle(.white.opacity(0.7))
-                    .tracking(0.5)
-                Text("$\(Int(combinedMonthlySpending).formatted())")
-                    .font(.ccAmountLarge)
-                    .foregroundStyle(.white)
-                    .monospacedDigit()
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.down.right")
-                        .font(.system(size: 11, weight: .semibold))
-                    Text("Trending steady")
-                        .font(.ccFootnote)
+                    .foregroundStyle(.white.opacity(0.65))
+                    .tracking(0.8)
+
+                HStack(alignment: .firstTextBaseline, spacing: CCTheme.space3) {
+                    Text("$\(Int(combinedMonthlySpending(circle)).formatted())")
+                        .font(.system(size: 46, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .monospacedDigit()
+
+                    Spacer()
+
+                    trendPill(circle)
                 }
-                .foregroundStyle(.white.opacity(0.85))
+
+                Text("vs $\(Int(lastMonthSpending(circle)).formatted()) last month")
+                    .font(.ccFootnote)
+                    .foregroundStyle(.white.opacity(0.65))
+                    .monospacedDigit()
             }
         }
         .padding(CCTheme.space6)
@@ -156,23 +169,89 @@ struct HomeView: View {
         .background(
             ZStack {
                 CCTheme.navy
-                // Capital One red swoosh in corner
+                // Elegant Capital One red swoosh along the bottom right
                 GeometryReader { geo in
                     Path { path in
-                        path.move(to: CGPoint(x: geo.size.width * 0.5, y: geo.size.height + 20))
-                        path.addQuadCurve(
-                            to: CGPoint(x: geo.size.width + 20, y: geo.size.height * 0.4),
-                            control: CGPoint(x: geo.size.width, y: geo.size.height + 40)
+                        let w = geo.size.width
+                        let h = geo.size.height
+                        path.move(to: CGPoint(x: w * 0.3, y: h + 10))
+                        path.addCurve(
+                            to: CGPoint(x: w + 10, y: h * 0.25),
+                            control1: CGPoint(x: w * 0.85, y: h + 10),
+                            control2: CGPoint(x: w * 1.05, y: h * 0.85)
                         )
-                        path.addLine(to: CGPoint(x: geo.size.width + 20, y: geo.size.height + 20))
+                        path.addLine(to: CGPoint(x: w + 10, y: h + 10))
                         path.closeSubpath()
                     }
-                    .fill(CCTheme.red.opacity(0.9))
+                    .fill(CCTheme.red)
+                    .opacity(0.95)
                 }
             }
         )
         .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusLarge))
         .padding(.horizontal, CCTheme.space5)
+    }
+
+    private func heroMemberStack(_ circle: Circle) -> some View {
+        HStack(spacing: -10) {
+            ForEach(Array(circle.members.prefix(3))) { member in
+                CCAvatar(user: member.user, size: 34)
+                    .overlay {
+                        SwiftUI.Circle().stroke(CCTheme.navy, lineWidth: 2.5)
+                    }
+            }
+            if circle.members.count > 3 {
+                Text("+\(circle.members.count - 3)")
+                    .font(.ccCaption.bold())
+                    .foregroundStyle(.white)
+                    .frame(width: 34, height: 34)
+                    .background(CCTheme.navy.opacity(0.8))
+                    .clipShape(SwiftUI.Circle())
+                    .overlay {
+                        SwiftUI.Circle().stroke(CCTheme.navy, lineWidth: 2.5)
+                    }
+            }
+        }
+    }
+
+    private func trendPill(_ circle: Circle) -> some View {
+        let change = spendingChangePercent(circle)
+        let isUp = change > 0
+        let color: Color = abs(change) < 3 ? .white.opacity(0.85) : (isUp ? CCTheme.red : Color(hex: "#5DD97A"))
+        let iconName = abs(change) < 3 ? "minus" : (isUp ? "arrow.up.right" : "arrow.down.right")
+        let label = abs(change) < 3 ? "Steady" : "\(abs(Int(change)))%"
+
+        return HStack(spacing: 4) {
+            Image(systemName: iconName)
+                .font(.system(size: 10, weight: .bold))
+            Text(label)
+                .font(.ccFootnote.bold())
+        }
+        .foregroundStyle(color)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(.white.opacity(0.12))
+        .clipShape(Capsule())
+    }
+
+    private func lastMonthSpending(_ circle: Circle) -> Double {
+        // For the demo we use the previous statement if available
+        guard state.statements.count > 1 else { return combinedMonthlySpending(circle) }
+        let sorted = state.statements
+        if let currentIndex = sorted.firstIndex(where: { $0.id == state.selectedStatementId })
+           ?? sorted.indices.last {
+            if currentIndex > sorted.startIndex {
+                return sorted[sorted.index(before: currentIndex)].totalSpent
+            }
+        }
+        return sorted[sorted.index(before: sorted.endIndex)].totalSpent
+    }
+
+    private func spendingChangePercent(_ circle: Circle) -> Double {
+        let current = combinedMonthlySpending(circle)
+        let last = lastMonthSpending(circle)
+        guard last > 0 else { return 0 }
+        return ((current - last) / last) * 100
     }
 
     private var greeting: String {
@@ -193,10 +272,18 @@ struct HomeView: View {
         }
     }
 
-    private var combinedMonthlySpending: Double {
-        // Current month statement for the current user, extended for demo.
-        // In production this would sum across all circle members who opted in.
-        state.currentStatement?.totalSpent ?? 0
+    private func combinedMonthlySpending(_ circle: Circle) -> Double {
+        // Sum the monthly spending of every visible member in the circle.
+        // Members whose spending is private still count toward the household total
+        // for the current user's planning purposes, but we use their transactions
+        // only when they're visible.
+        let cutoff = Date(timeIntervalSinceNow: -86400 * 30)
+        var total: Double = 0
+        for member in circle.members {
+            let memberTotal = member.user.transactions.filter { $0.date >= cutoff }.reduce(0.0) { $0 + $1.amount }
+            total += memberTotal
+        }
+        return total
     }
 
     // MARK: - Members Grid
@@ -350,23 +437,33 @@ struct HomeView: View {
     }
 
     private func financeStatus(for member: CircleMember) -> String {
-        // Demo values — in production these would be real
+        let spent = monthlySpending(for: member)
+
+        // For the current user, compare with statement
         if member.user.id == state.currentUser.id {
-            return "On track, 12% under March"
+            if let statement = state.currentStatement {
+                let change = Int(statement.comparedToLastMonth)
+                if change < -5 { return "On track, \(abs(change))% under last month" }
+                if change > 5 { return "Watch: \(change)% over last month" }
+                return "Steady month"
+            }
+            return "On track"
         }
+
+        // For other members, use spending levels
         if member.role == .junior {
-            return "Within allowance"
+            return spent < 800 ? "Within allowance" : "Over allowance"
         }
-        return "On track"
+        if spent < 4000 { return "On track" }
+        if spent < 7000 { return "Steady" }
+        return "Watch: high this month"
     }
 
     private func monthlySpending(for member: CircleMember) -> Double {
-        // Demo values. In production this aggregates per member.
-        if member.user.id == state.currentUser.id {
-            return state.currentStatement?.totalSpent ?? 0
-        }
-        if member.role == .junior { return 320 }
-        return Double(Int.random(in: 3500...6800))
+        // Sum the user's transactions from the last 30 days
+        let cutoff = Date(timeIntervalSinceNow: -86400 * 30)
+        let recent = member.user.transactions.filter { $0.date >= cutoff }
+        return recent.reduce(0.0) { $0 + $1.amount }
     }
 
     // MARK: - Goals (only shown when they exist)

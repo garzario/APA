@@ -72,6 +72,46 @@ enum SeedData {
             Transaction(id: UUID(), merchantName: "Oxxo", amount: 250, category: .groceries, date: day(-15), cardId: savor.id),
         ]
 
+        // Maria's transactions (different profile: more groceries, less entertainment)
+        let mariaTransactions: [Transaction] = [
+            Transaction(id: UUID(), merchantName: "Costco", amount: 2450, category: .groceries, date: day(-2), cardId: quicksilver.id),
+            Transaction(id: UUID(), merchantName: "Walmart", amount: 680, category: .groceries, date: day(-4), cardId: quicksilver.id),
+            Transaction(id: UUID(), merchantName: "Nails Spa", amount: 450, category: .other, date: day(-5), cardId: quicksilver.id),
+            Transaction(id: UUID(), merchantName: "Liverpool", amount: 1200, category: .shopping, date: day(-8), cardId: quicksilver.id),
+            Transaction(id: UUID(), merchantName: "Pharmacy", amount: 280, category: .other, date: day(-9), cardId: quicksilver.id),
+            Transaction(id: UUID(), merchantName: "Gas station", amount: 620, category: .transport, date: day(-11), cardId: quicksilver.id),
+            Transaction(id: UUID(), merchantName: "Sams Club", amount: 1450, category: .groceries, date: day(-14), cardId: quicksilver.id),
+        ]
+
+        // Diego's transactions (a teen: small amounts, snacks, games)
+        let diegoTransactions: [Transaction] = [
+            Transaction(id: UUID(), merchantName: "7-Eleven", amount: 45, category: .dining, date: day(-1), cardId: UUID()),
+            Transaction(id: UUID(), merchantName: "Cinepolis", amount: 180, category: .entertainment, date: day(-3), cardId: UUID()),
+            Transaction(id: UUID(), merchantName: "Nintendo eShop", amount: 59, category: .entertainment, date: day(-6), cardId: UUID()),
+            Transaction(id: UUID(), merchantName: "Dominos", amount: 220, category: .dining, date: day(-8), cardId: UUID()),
+            Transaction(id: UUID(), merchantName: "School cafeteria", amount: 85, category: .dining, date: day(-10), cardId: UUID()),
+            Transaction(id: UUID(), merchantName: "Spotify", amount: 99, category: .entertainment, date: day(-12), cardId: UUID()),
+        ]
+
+        // Adan's transactions
+        let adanTransactions: [Transaction] = [
+            Transaction(id: UUID(), merchantName: "Rappi", amount: 340, category: .dining, date: day(-2), cardId: venture.id),
+            Transaction(id: UUID(), merchantName: "DiDi", amount: 145, category: .transport, date: day(-4), cardId: venture.id),
+            Transaction(id: UUID(), merchantName: "Amazon", amount: 780, category: .shopping, date: day(-6), cardId: venture.id),
+            Transaction(id: UUID(), merchantName: "Steam", amount: 420, category: .entertainment, date: day(-9), cardId: venture.id),
+            Transaction(id: UUID(), merchantName: "HEB", amount: 890, category: .groceries, date: day(-12), cardId: venture.id),
+        ]
+
+        // Alana's transactions
+        let alanaTransactions: [Transaction] = [
+            Transaction(id: UUID(), merchantName: "Starbucks", amount: 125, category: .dining, date: day(-1), cardId: savor.id),
+            Transaction(id: UUID(), merchantName: "Apple", amount: 1450, category: .shopping, date: day(-3), cardId: savor.id),
+            Transaction(id: UUID(), merchantName: "Yogurt shop", amount: 85, category: .dining, date: day(-5), cardId: savor.id),
+            Transaction(id: UUID(), merchantName: "Uber", amount: 165, category: .transport, date: day(-7), cardId: savor.id),
+            Transaction(id: UUID(), merchantName: "Netflix", amount: 199, category: .entertainment, date: day(-11), cardId: savor.id),
+            Transaction(id: UUID(), merchantName: "Sephora", amount: 890, category: .shopping, date: day(-13), cardId: savor.id),
+        ]
+
         // Users
         let patricio = User(
             id: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
@@ -89,8 +129,19 @@ enum SeedData {
             email: "maria.garza@gmail.com",
             avatarIcon: "person.circle",
             cards: [quicksilver],
-            transactions: [],
+            transactions: mariaTransactions,
             joinedDate: Date(timeIntervalSinceNow: -86400 * 300)
+        )
+
+        // Diego has his own junior card (mock)
+        let diegoCard = Card(
+            id: UUID(uuidString: "DDDDDDDD-1111-1111-1111-DDDDDDDDDDDD")!,
+            name: "Journey Student",
+            lastFourDigits: "8834",
+            cardType: .platinum,
+            currentBalance: 180.00,
+            creditLimit: 500,
+            rewardsBalance: 240
         )
 
         let diego = User(
@@ -98,8 +149,8 @@ enum SeedData {
             name: "Diego Garza",
             email: "diego.garza@gmail.com",
             avatarIcon: "figure.child.circle.fill",
-            cards: [],
-            transactions: [],
+            cards: [diegoCard],
+            transactions: diegoTransactions,
             joinedDate: Date(timeIntervalSinceNow: -86400 * 180)
         )
 
@@ -109,7 +160,7 @@ enum SeedData {
             email: "ehecatl16@hotmail.com",
             avatarIcon: "person.fill",
             cards: [venture],
-            transactions: [],
+            transactions: adanTransactions,
             joinedDate: Date(timeIntervalSinceNow: -86400 * 250)
         )
 
@@ -119,7 +170,7 @@ enum SeedData {
             email: "A00841524@tec.mx",
             avatarIcon: "person.crop.circle.fill",
             cards: [savor],
-            transactions: [],
+            transactions: alanaTransactions,
             joinedDate: Date(timeIntervalSinceNow: -86400 * 250)
         )
 

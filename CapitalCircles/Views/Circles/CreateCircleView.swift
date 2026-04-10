@@ -16,11 +16,15 @@ struct CreateCircleView: View {
     @State private var goalTitle: String = ""
     @State private var goalTargetText: String = ""
     @State private var goalIcon: String = "airplane"
+    @State private var shareSpending: Bool = false
+    @State private var shareCategories: Bool = false
+    @State private var parentsSeeChildren: Bool = true
 
     enum CreateCircleStep: Int, CaseIterable {
         case type
         case name
         case members
+        case privacy
         case goal
         case review
     }
@@ -36,6 +40,7 @@ struct CreateCircleView: View {
                         case .type: typeStep
                         case .name: nameStep
                         case .members: membersStep
+                        case .privacy: privacyStep
                         case .goal: goalStep
                         case .review: reviewStep
                         }
@@ -305,7 +310,177 @@ struct CreateCircleView: View {
         return trimmed.contains("@") && trimmed.contains(".") && trimmed.count > 5
     }
 
-    // MARK: - Step 4: First Goal (optional)
+    // MARK: - Step 4: Privacy
+
+    private var privacyStep: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space6) {
+            VStack(alignment: .leading, spacing: CCTheme.space2) {
+                Text("PRIVACY")
+                    .font(.ccCaption)
+                    .foregroundStyle(CCTheme.slate)
+                    .tracking(0.5)
+                Text("What can members\nsee from each other?")
+                    .font(.system(size: 30, weight: .bold))
+                    .foregroundStyle(CCTheme.ink)
+                    .lineSpacing(2)
+            }
+
+            // Always visible: shared goals
+            privacyBanner(
+                icon: "target",
+                title: "Shared goals are always visible",
+                body: "Every member sees the progress of goals they are part of."
+            )
+
+            // Type-specific privacy options
+            switch selectedType {
+            case .family: familyPrivacyOptions
+            case .couple: couplePrivacyOptions
+            case .roommates: roommatesPrivacyOptions
+            case .friends: friendsPrivacyOptions
+            }
+
+            // Universal note
+            HStack(alignment: .top, spacing: CCTheme.space3) {
+                Image(systemName: "lock.shield")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(CCTheme.slate)
+                Text("You can change these settings anytime from the circle details. Members can also choose not to share more than you set here.")
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+                    .lineSpacing(3)
+            }
+            .padding(CCTheme.space4)
+            .background(CCTheme.fog)
+            .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+        }
+    }
+
+    private func privacyBanner(icon: String, title: String, body: String) -> some View {
+        HStack(alignment: .top, spacing: CCTheme.space3) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(.white)
+                .frame(width: 36, height: 36)
+                .background(CCTheme.navy)
+                .clipShape(SwiftUI.Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.ccBody.bold())
+                    .foregroundStyle(CCTheme.ink)
+                Text(body)
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+                    .lineSpacing(2)
+            }
+        }
+        .padding(CCTheme.space4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(CCTheme.cream)
+        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+    }
+
+    private var familyPrivacyOptions: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space3) {
+            Text("FAMILY SETTINGS")
+                .font(.ccCaption)
+                .foregroundStyle(CCTheme.slate)
+                .tracking(0.5)
+
+            privacyToggleCard(
+                title: "Parents can see children's cards and spending",
+                subtitle: "Recommended. Helps you guide their financial habits.",
+                isOn: $parentsSeeChildren
+            )
+
+            privacyToggleCard(
+                title: "Parents can see each other's spending",
+                subtitle: "Off by default. Each parent stays private.",
+                isOn: $shareSpending
+            )
+
+            HStack(alignment: .top, spacing: CCTheme.space3) {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(CCTheme.slate)
+                Text("Children never see parent finances. This is always off and cannot be changed.")
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+                    .lineSpacing(2)
+            }
+            .padding(.top, CCTheme.space2)
+        }
+    }
+
+    private var couplePrivacyOptions: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space3) {
+            Text("COUPLE SETTINGS")
+                .font(.ccCaption)
+                .foregroundStyle(CCTheme.slate)
+                .tracking(0.5)
+
+            privacyToggleCard(
+                title: "Share spending categories",
+                subtitle: "Shows what you spend on (e.g. dining, travel) without exact amounts.",
+                isOn: $shareCategories
+            )
+
+            privacyToggleCard(
+                title: "Share full spending details",
+                subtitle: "Your partner sees amounts too. Highest transparency.",
+                isOn: $shareSpending
+            )
+        }
+    }
+
+    private var roommatesPrivacyOptions: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space3) {
+            privacyBanner(
+                icon: "house.lodge",
+                title: "Roommates only share goals",
+                body: "Shared expenses and goals are visible. Personal spending stays private for everyone. No exceptions."
+            )
+        }
+    }
+
+    private var friendsPrivacyOptions: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space3) {
+            privacyBanner(
+                icon: "person.2",
+                title: "Friends only share goals",
+                body: "Your friends see the progress of shared goals and nothing else. No personal spending is visible."
+            )
+        }
+    }
+
+    private func privacyToggleCard(title: String, subtitle: String, isOn: Binding<Bool>) -> some View {
+        VStack(alignment: .leading, spacing: CCTheme.space3) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.ccBody.bold())
+                        .foregroundStyle(CCTheme.ink)
+                    Text(subtitle)
+                        .font(.ccFootnote)
+                        .foregroundStyle(CCTheme.slate)
+                        .lineSpacing(2)
+                }
+                Spacer()
+                Toggle("", isOn: isOn)
+                    .labelsHidden()
+                    .tint(CCTheme.navy)
+            }
+        }
+        .padding(CCTheme.space4)
+        .background(CCTheme.canvas)
+        .overlay {
+            RoundedRectangle(cornerRadius: CCTheme.radiusMedium)
+                .stroke(CCTheme.hairline, lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+    }
+
+    // MARK: - Step 5: First Goal (optional)
 
     private var goalStep: some View {
         VStack(alignment: .leading, spacing: CCTheme.space6) {
@@ -425,6 +600,7 @@ struct CreateCircleView: View {
                 summaryRow(label: "Circle", value: circleName)
                 summaryRow(label: "Type", value: selectedType.rawValue)
                 summaryRow(label: "Invites", value: emailInvites.isEmpty ? "None yet" : "\(emailInvites.count) pending")
+                summaryRow(label: "Privacy", value: privacySummary)
                 if addGoal && !goalTitle.isEmpty {
                     summaryRow(label: "First goal", value: goalTitle)
                     if let amount = Double(goalTargetText.replacingOccurrences(of: ",", with: "")), amount > 0 {
@@ -437,6 +613,21 @@ struct CreateCircleView: View {
             .padding(CCTheme.space5)
             .background(CCTheme.cream)
             .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+        }
+    }
+
+    private var privacySummary: String {
+        switch selectedType {
+        case .family:
+            if parentsSeeChildren && shareSpending { return "Open family" }
+            if parentsSeeChildren { return "Parents watch children" }
+            return "Goals only"
+        case .couple:
+            if shareSpending { return "Full transparency" }
+            if shareCategories { return "Categories shared" }
+            return "Goals only"
+        case .roommates, .friends:
+            return "Goals only"
         }
     }
 
@@ -487,6 +678,7 @@ struct CreateCircleView: View {
         case .type: return "Next"
         case .name: return "Next"
         case .members: return "Next"
+        case .privacy: return "Next"
         case .goal: return "Review"
         case .review: return "Create circle"
         }
@@ -497,6 +689,7 @@ struct CreateCircleView: View {
         case .type: return true
         case .name: return !circleName.trimmingCharacters(in: .whitespaces).isEmpty
         case .members: return true
+        case .privacy: return true
         case .goal:
             if !addGoal { return true }
             let hasTitle = !goalTitle.trimmingCharacters(in: .whitespaces).isEmpty
