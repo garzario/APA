@@ -454,30 +454,37 @@ struct CreateCircleView: View {
     }
 
     private func privacyToggleCard(title: String, subtitle: String, isOn: Binding<Bool>) -> some View {
-        VStack(alignment: .leading, spacing: CCTheme.space3) {
-            HStack(alignment: .top) {
+        Button {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isOn.wrappedValue.toggle()
+            }
+        } label: {
+            HStack(alignment: .center, spacing: CCTheme.space3) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.ccBody.bold())
                         .foregroundStyle(CCTheme.ink)
+                        .multilineTextAlignment(.leading)
                     Text(subtitle)
                         .font(.ccFootnote)
                         .foregroundStyle(CCTheme.slate)
                         .lineSpacing(2)
+                        .multilineTextAlignment(.leading)
                 }
                 Spacer()
-                Toggle("", isOn: isOn)
-                    .labelsHidden()
-                    .tint(CCTheme.navy)
+                CCSwitch(isOn: isOn.wrappedValue)
             }
+            .padding(CCTheme.space4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(isOn.wrappedValue ? CCTheme.cream : CCTheme.canvas)
+            .overlay {
+                RoundedRectangle(cornerRadius: CCTheme.radiusMedium)
+                    .stroke(isOn.wrappedValue ? CCTheme.navy.opacity(0.4) : CCTheme.hairline, lineWidth: 1)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+            .contentShape(Rectangle())
         }
-        .padding(CCTheme.space4)
-        .background(CCTheme.canvas)
-        .overlay {
-            RoundedRectangle(cornerRadius: CCTheme.radiusMedium)
-                .stroke(CCTheme.hairline, lineWidth: 1)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+        .buttonStyle(.plain)
     }
 
     // MARK: - Step 5: First Goal (optional)
