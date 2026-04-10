@@ -4,12 +4,19 @@ struct CreateGoalView: View {
     @Environment(AppStateManager.self) private var state
     @Environment(\.dismiss) private var dismiss
 
+    let defaultCircleId: UUID?
+
     @State private var title: String = ""
     @State private var iconName: String = "target"
     @State private var targetText: String = ""
     @State private var hasDeadline: Bool = false
     @State private var deadline: Date = Date(timeIntervalSinceNow: 86400 * 90)
     @State private var selectedCircleId: UUID?
+
+    init(defaultCircleId: UUID? = nil) {
+        self.defaultCircleId = defaultCircleId
+        _selectedCircleId = State(initialValue: defaultCircleId)
+    }
 
     private let iconOptions: [(String, String)] = [
         ("target", "General"),

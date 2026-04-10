@@ -3,6 +3,7 @@ import SwiftUI
 struct NotificationsView: View {
     @Environment(AppStateManager.self) private var state
     @Environment(\.dismiss) private var dismiss
+    @State private var selectedNotification: AppNotification?
 
     var body: some View {
         NavigationStack {
@@ -14,6 +15,7 @@ struct NotificationsView: View {
                 }
             }
             .background(CCTheme.canvas)
+            .navigationTitle("Notifications")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -24,11 +26,6 @@ struct NotificationsView: View {
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(CCTheme.ink)
                     }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Notifications")
-                        .font(.ccHeadline)
-                        .foregroundStyle(CCTheme.ink)
                 }
                 if !state.notifications.isEmpty {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -42,6 +39,10 @@ struct NotificationsView: View {
                     }
                 }
             }
+            .sheet(item: $selectedNotification) { notification in
+                NotificationDetailSheet(notification: notification)
+                    .presentationDetents([.medium])
+            }
         }
     }
 
@@ -51,6 +52,7 @@ struct NotificationsView: View {
             ForEach(Array(state.notifications.enumerated()), id: \.element.id) { index, notification in
                 Button {
                     state.markNotificationRead(notification.id)
+                    selectedNotification = notification
                 } label: {
                     notificationRow(notification)
                 }
@@ -80,7 +82,8 @@ struct NotificationsView: View {
                 Text(notification.body)
                     .font(.ccFootnote)
                     .foregroundStyle(CCTheme.slate)
-                Text(notification.date, style: .relative)
+                    .lineLimit(2)
+                Text(relativeTime(notification.date))
                     .font(.ccCaption)
                     .foregroundStyle(CCTheme.mist)
                     .padding(.top, 2)
@@ -90,13 +93,28 @@ struct NotificationsView: View {
 
             if !notification.isRead {
                 SwiftUI.Circle()
-                    .fill(CCTheme.navy)
+                    .fill(CCTheme.red)
                     .frame(width: 8, height: 8)
+                    .padding(.top, 8)
             }
         }
         .padding(.horizontal, CCTheme.space5)
         .padding(.vertical, CCTheme.space4)
         .contentShape(Rectangle())
+    }
+
+    private func relativeTime(_ date: Date) -> String {
+        let now = Date()
+        let interval = now.timeIntervalSince(date)
+        let minutes = Int(interval / 60)
+        let hours = Int(interval / 3600)
+        let days = Int(interval / 86400)
+
+        if minutes < 1 { return "Just now" }
+        if minutes < 60 { return "\(minutes)m ago" }
+        if hours < 24 { return "\(hours)h ago" }
+        if days < 7 { return "\(days)d ago" }
+        return date.formatted(.dateTime.month(.abbreviated).day())
     }
 
     private var emptyState: some View {
@@ -116,5 +134,69 @@ struct NotificationsView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.bottom, CCTheme.space9)
+    }
+}
+
+// MARK: - Notification Detail Sheet
+
+struct NotificationDetailSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let notification: AppNotification
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: CCTheme.space6) {
+                    header
+
+                    Text(notification.body)
+                        .font(.ccBody)
+                        .foregroundStyle(CCTheme.ink)
+                        .lineSpacing(4)
+
+                    HStack {
+                        Text("Received")
+                            .font(.ccFootnote)
+                            .foregroundStyle(CCTheme.slate)
+                        Spacer()
+                        Text(notification.date.formatted(date: .abbreviated, time: .shortened))
+                            .font(.ccFootnote)
+                            .foregroundStyle(CCTheme.slate)
+                    }
+                    .padding(.top, CCTheme.space4)
+                }
+                .padding(CCTheme.space5)
+                .padding(.bottom, CCTheme.space5)
+            }
+            .background(CCTheme.canvas)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(CCTheme.ink)
+                    }
+                }
+            }
+        }
+    }
+
+    private var header: some View {
+        HStack(alignment: .top, spacing: CCTheme.space4) {
+            Image(systemName: notification.icon)
+                .font(.system(size: 22, weight: .regular))
+                .foregroundStyle(CCTheme.navy)
+                .frame(width: 52, height: 52)
+                .background(CCTheme.fog)
+                .clipShape(SwiftUI.Circle())
+
+            Text(notification.title)
+                .font(.ccTitle)
+                .foregroundStyle(CCTheme.ink)
+            Spacer()
+        }
     }
 }

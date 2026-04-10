@@ -22,10 +22,29 @@ final class AppStateManager {
 
     var transactions: [Transaction]
 
-    // MARK: - Smart Statement
+    // MARK: - Smart Statements
 
-    var currentStatement: SmartStatement?
+    /// Historical statements by month, most recent first
+    var statements: [SmartStatement] = []
+    var selectedStatementId: UUID?
     var isLoadingStatement: Bool = false
+
+    /// The currently selected statement. Defaults to the most recent.
+    var currentStatement: SmartStatement? {
+        get {
+            if let id = selectedStatementId {
+                return statements.first(where: { $0.id == id })
+            }
+            return statements.first
+        }
+        set {
+            guard let newValue else { return }
+            if let index = statements.firstIndex(where: { $0.id == newValue.id }) {
+                statements[index] = newValue
+            }
+            selectedStatementId = newValue.id
+        }
+    }
 
     // MARK: - Notifications
 
@@ -40,7 +59,8 @@ final class AppStateManager {
         self.circles = seed.circles
         self.personalGoals = seed.personalGoals
         self.transactions = seed.transactions
-        self.currentStatement = seed.statement
+        self.statements = seed.statements
+        self.selectedStatementId = seed.statements.first?.id
         self.notifications = seed.notifications
     }
 
