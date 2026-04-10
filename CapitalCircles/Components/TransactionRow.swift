@@ -4,22 +4,20 @@ struct TransactionRow: View {
     let transaction: Transaction
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
             // Category icon
-            ZStack {
-                SwiftUI.Circle()
-                    .fill(CCTheme.lightBlue)
-                    .frame(width: 40, height: 40)
-                Image(systemName: transaction.category.icon)
-                    .font(.system(size: 16))
-                    .foregroundStyle(CCTheme.primaryBlue)
-            }
+            Image(systemName: transaction.category.icon)
+                .font(.title3)
+                .foregroundStyle(CCTheme.primaryBlue)
+                .frame(width: 40, height: 40)
+                .background(CCTheme.lightBlue)
+                .clipShape(SwiftUI.Circle())
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(transaction.merchantName)
                     .font(.subheadline.bold())
                     .foregroundStyle(CCTheme.textPrimary)
-                Text(transaction.date, format: .dateTime.month(.abbreviated).day())
+                Text("\(transaction.category.rawValue)  •  \(transaction.date.formatted(.dateTime.month(.abbreviated).day()))")
                     .font(.caption)
                     .foregroundStyle(CCTheme.textSecondary)
             }
@@ -30,6 +28,6 @@ struct TransactionRow: View {
                 .font(.subheadline.bold())
                 .foregroundStyle(CCTheme.textPrimary)
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 12)
     }
 }
