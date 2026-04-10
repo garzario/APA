@@ -28,6 +28,9 @@ Pods/
 
 # Secrets
 Secrets.swift
+backend/.env
+backend/__pycache__/
+*.pyc
 
 # macOS
 .DS_Store
