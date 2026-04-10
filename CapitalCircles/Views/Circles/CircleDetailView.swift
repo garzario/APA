@@ -16,18 +16,16 @@ struct CircleDetailView: View {
     var body: some View {
         ScrollView {
             if let circle {
-                VStack(spacing: CCTheme.paddingLarge) {
-                    circleHeader(circle)
-                    statsRow(circle)
-                    goalsSection(circle)
+                VStack(alignment: .leading, spacing: CCTheme.space7) {
+                    header(circle)
+                    sharedGoalsSection(circle)
                     membersSection(circle)
                 }
-                .padding(.horizontal, CCTheme.paddingMedium)
-                .padding(.bottom, CCTheme.paddingLarge)
+                .padding(.vertical, CCTheme.space5)
+                .padding(.bottom, CCTheme.space8)
             }
         }
-        .background(CCTheme.backgroundPrimary)
-        .navigationTitle(circle?.name ?? "")
+        .background(CCTheme.canvas)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -35,7 +33,7 @@ struct CircleDetailView: View {
                     Button {
                         showCreateGoal = true
                     } label: {
-                        Label("Create goal", systemImage: "target")
+                        Label("New goal", systemImage: "target")
                     }
                     Button {
                         showAddMember = true
@@ -43,8 +41,9 @@ struct CircleDetailView: View {
                         Label("Add member", systemImage: "person.badge.plus")
                     }
                 } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .foregroundStyle(CCTheme.primaryBlue)
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(CCTheme.ink)
                 }
             }
         }
@@ -62,121 +61,101 @@ struct CircleDetailView: View {
         }
     }
 
-    private func circleHeader(_ circle: Circle) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: circle.iconName)
-                .font(.system(size: 40))
-                .foregroundStyle(.white)
-                .frame(width: 90, height: 90)
-                .background(
-                    LinearGradient(
-                        colors: [CCTheme.primaryBlue, CCTheme.accentBlue],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 22))
+    private func header(_ circle: Circle) -> some View {
+        VStack(alignment: .leading, spacing: CCTheme.space4) {
+            Text(circle.type.rawValue.uppercased())
+                .font(.ccCaption)
+                .foregroundStyle(CCTheme.slate)
+                .tracking(0.5)
 
-            Text(circle.type.rawValue)
-                .font(.caption.bold())
-                .foregroundStyle(CCTheme.primaryBlue)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 5)
-                .background(CCTheme.lightBlue)
-                .clipShape(Capsule())
-        }
-        .padding(.top, CCTheme.paddingMedium)
-    }
+            Text(circle.name)
+                .font(.ccLargeTitle)
+                .foregroundStyle(CCTheme.ink)
 
-    private func statsRow(_ circle: Circle) -> some View {
-        HStack(spacing: 12) {
-            StatCard(
-                title: "Members",
-                value: "\(circle.memberCount)",
-                subtitle: circle.type == .family ? "Family" : "People",
-                icon: "person.fill",
-                color: CCTheme.primaryBlue
-            )
-            StatCard(
-                title: "Goals",
-                value: "\(circle.goals.count)",
-                subtitle: "\(Int(circle.totalGoalProgress * 100))% avg",
-                icon: "target",
-                color: CCTheme.successGreen
-            )
-        }
-    }
-
-    private func goalsSection(_ circle: Circle) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Shared goals")
-                    .font(.headline)
-                    .foregroundStyle(CCTheme.textPrimary)
-                Spacer()
-                Button {
-                    showCreateGoal = true
-                } label: {
-                    Label("Add", systemImage: "plus")
-                        .font(.caption.bold())
-                        .foregroundStyle(CCTheme.accentBlue)
-                }
+            HStack(spacing: CCTheme.space6) {
+                statBlock(value: "\(circle.memberCount)", label: "Members")
+                statBlock(value: "\(circle.goals.count)", label: "Goals")
+                statBlock(value: "\(Int(circle.totalGoalProgress * 100))%", label: "Progress")
             }
+        }
+        .padding(.horizontal, CCTheme.space5)
+    }
 
+    private func statBlock(value: String, label: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(.ccAmount)
+                .foregroundStyle(CCTheme.ink)
+                .monospacedDigit()
+            Text(label.uppercased())
+                .font(.ccCaption)
+                .foregroundStyle(CCTheme.slate)
+                .tracking(0.5)
+        }
+    }
+
+    private func sharedGoalsSection(_ circle: Circle) -> some View {
+        CCSection("Shared goals", trailing: AnyView(
+            Button {
+                showCreateGoal = true
+            } label: {
+                Text("Add")
+                    .font(.ccSubhead)
+                    .foregroundStyle(CCTheme.navy)
+            }
+        )) {
             if circle.goals.isEmpty {
-                EmptyStateCard(
+                InlineEmptyState(
                     icon: "target",
-                    title: "No shared goals yet",
-                    message: "Create a goal for your circle to work toward together",
-                    actionLabel: "Create goal",
-                    action: { showCreateGoal = true }
+                    title: "No shared goals",
+                    subtitle: "Create the first goal for this circle"
                 )
+                .padding(.horizontal, CCTheme.space5)
             } else {
-                ForEach(circle.goals) { goal in
-                    Button {
-                        selectedGoal = goal
-                    } label: {
-                        GoalProgressCard(goal: goal)
+                VStack(spacing: 0) {
+                    Divider()
+                    ForEach(Array(circle.goals.enumerated()), id: \.element.id) { index, goal in
+                        Button {
+                            selectedGoal = goal
+                        } label: {
+                            GoalListRow(goal: goal)
+                        }
+                        .buttonStyle(.plain)
+                        if index < circle.goals.count - 1 {
+                            Divider().padding(.leading, CCTheme.space5)
+                        }
                     }
-                    .buttonStyle(.plain)
+                    Divider()
                 }
             }
         }
     }
 
     private func membersSection(_ circle: Circle) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Members")
-                    .font(.headline)
-                    .foregroundStyle(CCTheme.textPrimary)
-                Spacer()
-                Button {
-                    showAddMember = true
-                } label: {
-                    Label("Invite", systemImage: "person.badge.plus")
-                        .font(.caption.bold())
-                        .foregroundStyle(CCTheme.accentBlue)
-                }
+        CCSection("Members", trailing: AnyView(
+            Button {
+                showAddMember = true
+            } label: {
+                Text("Invite")
+                    .font(.ccSubhead)
+                    .foregroundStyle(CCTheme.navy)
             }
-
+        )) {
             VStack(spacing: 0) {
-                ForEach(circle.members) { member in
+                Divider()
+                ForEach(Array(circle.members.enumerated()), id: \.element.id) { index, member in
                     Button {
                         selectedMember = member
                     } label: {
                         MemberRow(member: member)
                     }
                     .buttonStyle(.plain)
-                    if member.id != circle.members.last?.id {
+                    if index < circle.members.count - 1 {
                         Divider().padding(.leading, 56)
                     }
                 }
+                Divider()
             }
-            .padding(.horizontal, CCTheme.paddingMedium)
-            .background(CCTheme.backgroundCard)
-            .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
-            .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
         }
     }
 }
@@ -187,33 +166,31 @@ struct MemberRow: View {
     let member: CircleMember
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: CCTheme.space4) {
             Image(systemName: member.user.avatarIcon)
-                .font(.title2)
-                .foregroundStyle(CCTheme.primaryBlue)
-                .frame(width: 40, height: 40)
-                .background(CCTheme.lightBlue)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(CCTheme.navy)
+                .frame(width: 36, height: 36)
+                .background(CCTheme.fog)
                 .clipShape(SwiftUI.Circle())
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(member.user.name)
-                    .font(.subheadline.bold())
-                    .foregroundStyle(CCTheme.textPrimary)
+                    .font(.ccBody)
+                    .foregroundStyle(CCTheme.ink)
                 Text(member.role.rawValue)
-                    .font(.caption)
-                    .foregroundStyle(CCTheme.textSecondary)
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
             }
 
             Spacer()
 
             Text(member.visibilityLevel.rawValue)
-                .font(.caption2.bold())
-                .foregroundStyle(CCTheme.accentBlue)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(CCTheme.lightBlue)
-                .clipShape(Capsule())
+                .font(.ccCaption)
+                .foregroundStyle(CCTheme.slate)
         }
-        .padding(.vertical, 10)
+        .padding(.horizontal, CCTheme.space5)
+        .padding(.vertical, CCTheme.space4)
+        .contentShape(Rectangle())
     }
 }

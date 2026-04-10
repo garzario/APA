@@ -1,258 +1,442 @@
 import SwiftUI
 
+/// The Family Hub: the main experience of Capital Circles.
+/// This is where users see their primary circle, shared goals, and personal activity.
 struct HomeView: View {
     @Environment(AppStateManager.self) private var state
     @State private var showNotifications = false
     @State private var selectedTransaction: Transaction?
     @State private var selectedGoal: Goal?
 
+    /// The primary circle is the first family-type circle, or the first circle available.
+    private var primaryCircle: Circle? {
+        state.circles.first(where: { $0.type == .family }) ?? state.circles.first
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: CCTheme.paddingLarge) {
-                    heroHeader
-                    monthlySpendingCard
-                    quickActions
-                    goalsSection
+                LazyVStack(alignment: .leading, spacing: CCTheme.space7) {
+                    greetingHeader
+                    if let primaryCircle {
+                        hubSection(primaryCircle)
+                        sharedGoalsSection(primaryCircle)
+                    }
+                    personalSection
                     recentActivitySection
+                    otherCirclesSection
                 }
-                .padding(.horizontal, CCTheme.paddingMedium)
-                .padding(.bottom, CCTheme.paddingLarge * 2)
+                .padding(.vertical, CCTheme.space5)
             }
-            .background(CCTheme.backgroundPrimary)
+            .background(CCTheme.canvas)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "circle.grid.3x3.circle.fill")
-                            .font(.title3)
-                            .foregroundStyle(CCTheme.primaryBlue)
-                        Text("Capital Circles")
-                            .font(.headline)
-                            .foregroundStyle(CCTheme.textPrimary)
-                    }
+                ToolbarItem(placement: .principal) {
+                    Text("Capital Circles")
+                        .font(.ccHeadline)
+                        .foregroundStyle(CCTheme.ink)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showNotifications = true
                     } label: {
                         ZStack(alignment: .topTrailing) {
-                            Image(systemName: "bell.fill")
-                                .foregroundStyle(CCTheme.primaryBlue)
-                                .font(.title3)
+                            Image(systemName: "bell")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundStyle(CCTheme.ink)
                             if state.unreadNotificationCount > 0 {
                                 SwiftUI.Circle()
-                                    .fill(CCTheme.errorRed)
-                                    .frame(width: 8, height: 8)
-                                    .offset(x: 3, y: -2)
+                                    .fill(CCTheme.red)
+                                    .frame(width: 7, height: 7)
+                                    .offset(x: 4, y: -2)
                             }
                         }
                     }
                 }
             }
-            .sheet(isPresented: $showNotifications) {
-                NotificationsView()
-            }
-            .sheet(item: $selectedTransaction) { transaction in
-                TransactionDetailView(transaction: transaction)
-            }
-            .sheet(item: $selectedGoal) { goal in
-                GoalDetailView(goal: goal)
+            .sheet(isPresented: $showNotifications) { NotificationsView() }
+            .sheet(item: $selectedTransaction) { TransactionDetailView(transaction: $0) }
+            .sheet(item: $selectedGoal) { GoalDetailView(goal: $0) }
+            .navigationDestination(for: UUID.self) { id in
+                CircleDetailView(circleId: id)
             }
         }
     }
 
-    // MARK: - Hero Header
+    // MARK: - Greeting
 
-    private var heroHeader: some View {
-        HStack(alignment: .center, spacing: 14) {
-            Image(systemName: state.currentUser.avatarIcon)
-                .font(.system(size: 44))
-                .foregroundStyle(CCTheme.primaryBlue)
-                .frame(width: 56, height: 56)
-                .background(CCTheme.lightBlue)
-                .clipShape(SwiftUI.Circle())
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Welcome back")
-                    .font(.caption)
-                    .foregroundStyle(CCTheme.textSecondary)
-                Text(state.currentUser.name.components(separatedBy: " ").first ?? "")
-                    .font(.title2.bold())
-                    .foregroundStyle(CCTheme.textPrimary)
-            }
-            Spacer()
+    private var greetingHeader: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space2) {
+            Text(greeting)
+                .font(.ccCaption)
+                .foregroundStyle(CCTheme.slate)
+                .textCase(.uppercase)
+                .tracking(0.5)
+            Text(state.currentUser.name.components(separatedBy: " ").first ?? "")
+                .font(.ccLargeTitle)
+                .foregroundStyle(CCTheme.ink)
         }
-        .padding(.top, 4)
+        .padding(.horizontal, CCTheme.space5)
     }
 
-    // MARK: - Monthly Spending Card
+    private var greeting: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        switch hour {
+        case 5..<12: return "Good morning"
+        case 12..<18: return "Good afternoon"
+        default: return "Good evening"
+        }
+    }
 
-    private var monthlySpendingCard: some View {
-        NavigationLink(destination: StatementView()) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("This month")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.8))
-                        Text("$\(Int(state.totalSpentThisMonth).formatted())")
-                            .font(.system(size: 32, weight: .bold, design: .rounded))
+    // MARK: - Family Hub
+
+    private func hubSection(_ circle: Circle) -> some View {
+        NavigationLink(value: circle.id) {
+            VStack(alignment: .leading, spacing: CCTheme.space5) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: CCTheme.space1) {
+                        Text(circle.type.rawValue.uppercased())
+                            .font(.ccCaption)
+                            .foregroundStyle(.white.opacity(0.7))
+                            .tracking(1)
+                        Text(circle.name)
+                            .font(.ccTitle)
                             .foregroundStyle(.white)
                     }
                     Spacer()
-                    Image(systemName: "sparkles")
-                        .font(.title2)
-                        .foregroundStyle(.white.opacity(0.9))
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.85))
                 }
 
-                HStack(spacing: 8) {
-                    let change = state.currentStatement?.comparedToLastMonth ?? 0
-                    Image(systemName: change < 0 ? "arrow.down.right" : "arrow.up.right")
-                        .font(.caption.bold())
-                    Text("\(abs(Int(change)))% vs last month")
-                        .font(.caption.bold())
+                // Member avatars row
+                HStack(spacing: -10) {
+                    ForEach(circle.members.prefix(4)) { member in
+                        Image(systemName: member.user.avatarIcon)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(.white)
+                            .frame(width: 36, height: 36)
+                            .background(CCTheme.navy.opacity(0.9))
+                            .clipShape(SwiftUI.Circle())
+                            .overlay {
+                                SwiftUI.Circle().stroke(.white, lineWidth: 2)
+                            }
+                    }
+                    if circle.members.count > 4 {
+                        Text("+\(circle.members.count - 4)")
+                            .font(.ccFootnote.bold())
+                            .foregroundStyle(.white)
+                            .frame(width: 36, height: 36)
+                            .background(CCTheme.navy.opacity(0.9))
+                            .clipShape(SwiftUI.Circle())
+                            .overlay {
+                                SwiftUI.Circle().stroke(.white, lineWidth: 2)
+                            }
+                    }
                     Spacer()
-                    Text("Tap for insights")
-                        .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.7))
-                    Image(systemName: "chevron.right")
-                        .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.7))
+                    Text("\(circle.members.count) members")
+                        .font(.ccFootnote)
+                        .foregroundStyle(.white.opacity(0.85))
                 }
-                .foregroundStyle(.white.opacity(0.95))
-                .padding(.vertical, 8)
-                .padding(.horizontal, 10)
-                .background(.white.opacity(0.15))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                Divider().background(.white.opacity(0.2))
+
+                HStack(spacing: CCTheme.space6) {
+                    hubStat(label: "Shared goals", value: "\(circle.goals.count)")
+                    hubStat(label: "Progress", value: "\(Int(circle.totalGoalProgress * 100))%")
+                    hubStat(label: "Saved together", value: "$\(shortAmount(circle.goals.reduce(0) { $0 + $1.currentAmount }))")
+                }
             }
-            .padding(CCTheme.paddingLarge)
+            .padding(CCTheme.space6)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                LinearGradient(
-                    colors: [CCTheme.primaryBlue, CCTheme.accentBlue],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusLarge))
-            .shadow(color: CCTheme.primaryBlue.opacity(0.3), radius: 16, y: 6)
+            .background(CCTheme.navy)
+            .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusLarge))
         }
         .buttonStyle(.plain)
+        .padding(.horizontal, CCTheme.space5)
     }
 
-    // MARK: - Quick Actions
-
-    private var quickActions: some View {
-        HStack(spacing: 12) {
-            NavigationLink(destination: CardSelectorView()) {
-                quickActionCard(
-                    icon: "creditcard.fill",
-                    title: "Card optimizer",
-                    subtitle: "Best card per purchase",
-                    color: CCTheme.accentBlue
-                )
-            }
-            NavigationLink(destination: CirclesListView()) {
-                quickActionCard(
-                    icon: "person.3.fill",
-                    title: "My circles",
-                    subtitle: "\(state.circles.count) active",
-                    color: CCTheme.successGreen
-                )
-            }
+    private func hubStat(label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(.ccHeadline)
+                .foregroundStyle(.white)
+            Text(label)
+                .font(.ccCaption)
+                .foregroundStyle(.white.opacity(0.7))
         }
-        .buttonStyle(.plain)
     }
 
-    private func quickActionCard(icon: String, title: String, subtitle: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: icon)
-                .font(.title3)
-                .foregroundStyle(color)
-                .frame(width: 36, height: 36)
-                .background(color.opacity(0.15))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-            Text(title)
-                .font(.subheadline.bold())
-                .foregroundStyle(CCTheme.textPrimary)
-            Text(subtitle)
-                .font(.caption)
-                .foregroundStyle(CCTheme.textSecondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(CCTheme.paddingMedium)
-        .background(CCTheme.backgroundCard)
-        .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
-        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
-    }
+    // MARK: - Shared Goals (from primary circle)
 
-    // MARK: - Goals Section
-
-    private var goalsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Active goals")
-                    .font(.title3.bold())
-                    .foregroundStyle(CCTheme.textPrimary)
-                Spacer()
-                NavigationLink(destination: GoalsListView()) {
-                    Text("See all")
-                        .font(.subheadline)
-                        .foregroundStyle(CCTheme.accentBlue)
-                }
+    private func sharedGoalsSection(_ circle: Circle) -> some View {
+        CCSection("Family goals", trailing: AnyView(
+            NavigationLink(value: circle.id) {
+                Text("See all")
+                    .font(.ccSubhead)
+                    .foregroundStyle(CCTheme.navy)
             }
-
-            let goals = state.allGoals.sorted { $0.progressPercentage > $1.progressPercentage }.prefix(3)
-            if goals.isEmpty {
-                EmptyStateCard(
+        )) {
+            if circle.goals.isEmpty {
+                InlineEmptyState(
                     icon: "target",
-                    title: "No goals yet",
-                    message: "Create your first goal to start tracking progress"
+                    title: "No family goals yet",
+                    subtitle: "Tap the circle above to create one"
                 )
+                .padding(.horizontal, CCTheme.space5)
             } else {
-                ForEach(Array(goals)) { goal in
+                VStack(spacing: 0) {
+                    Divider()
+                    ForEach(Array(circle.goals.enumerated()), id: \.element.id) { index, goal in
+                        Button {
+                            selectedGoal = goal
+                        } label: {
+                            GoalListRow(goal: goal)
+                        }
+                        .buttonStyle(.plain)
+                        if index < circle.goals.count - 1 {
+                            Divider().padding(.leading, CCTheme.space5)
+                        }
+                    }
+                    Divider()
+                }
+                .background(CCTheme.canvas)
+            }
+        }
+    }
+
+    // MARK: - Personal
+
+    private var personalSection: some View {
+        let personal = state.personalGoals
+        return CCSection("For you") {
+            VStack(spacing: 0) {
+                if let first = personal.first {
+                    Divider()
                     Button {
-                        selectedGoal = goal
+                        selectedGoal = first
                     } label: {
-                        GoalProgressCard(goal: goal)
+                        GoalListRow(goal: first)
                     }
                     .buttonStyle(.plain)
                 }
+                Divider()
+                NavigationLink(destination: CardSelectorView()) {
+                    QuickLinkRow(
+                        icon: "creditcard",
+                        title: "Card optimizer",
+                        subtitle: "Best card per purchase"
+                    )
+                }
+                Divider().padding(.leading, 56)
+                NavigationLink(destination: StatementView()) {
+                    QuickLinkRow(
+                        icon: "chart.bar",
+                        title: "This month's insights",
+                        subtitle: "AI summary of your spending"
+                    )
+                }
+                Divider()
             }
+            .background(CCTheme.canvas)
         }
     }
 
     // MARK: - Recent Activity
 
     private var recentActivitySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Recent activity")
-                    .font(.title3.bold())
-                    .foregroundStyle(CCTheme.textPrimary)
-                Spacer()
-            }
-
+        CCSection("Recent activity") {
             VStack(spacing: 0) {
-                ForEach(state.transactions.prefix(5)) { transaction in
+                Divider()
+                ForEach(Array(state.transactions.prefix(5).enumerated()), id: \.element.id) { index, transaction in
                     Button {
                         selectedTransaction = transaction
                     } label: {
                         TransactionRow(transaction: transaction)
                     }
                     .buttonStyle(.plain)
-                    if transaction.id != state.transactions.prefix(5).last?.id {
-                        Divider()
-                            .padding(.leading, 56)
+                    if index < 4 {
+                        Divider().padding(.leading, 56)
+                    }
+                }
+                Divider()
+            }
+            .background(CCTheme.canvas)
+        }
+    }
+
+    // MARK: - Other Circles
+
+    @ViewBuilder
+    private var otherCirclesSection: some View {
+        let otherCircles = state.circles.filter { $0.id != primaryCircle?.id }
+        if !otherCircles.isEmpty {
+            CCSection("Other circles") {
+                VStack(spacing: 0) {
+                    Divider()
+                    ForEach(Array(otherCircles.enumerated()), id: \.element.id) { index, circle in
+                        NavigationLink(value: circle.id) {
+                            CircleListRow(circle: circle)
+                        }
+                        .buttonStyle(.plain)
+                        if index < otherCircles.count - 1 {
+                            Divider().padding(.leading, 56)
+                        }
+                    }
+                    Divider()
+                }
+                .background(CCTheme.canvas)
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func shortAmount(_ value: Double) -> String {
+        if value >= 1000 {
+            return String(format: "%.0fK", value / 1000)
+        }
+        return String(Int(value))
+    }
+}
+
+// MARK: - Goal List Row
+
+struct GoalListRow: View {
+    let goal: Goal
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space3) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(goal.title)
+                        .font(.ccHeadline)
+                        .foregroundStyle(CCTheme.ink)
+                    Text("$\(Int(goal.currentAmount).formatted()) of $\(Int(goal.targetAmount).formatted())")
+                        .font(.ccFootnote)
+                        .foregroundStyle(CCTheme.slate)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("\(Int(goal.progressPercentage * 100))%")
+                        .font(.ccHeadline)
+                        .foregroundStyle(CCTheme.ink)
+                        .monospacedDigit()
+                    if goal.isShared {
+                        Text("Shared")
+                            .font(.ccCaption)
+                            .foregroundStyle(CCTheme.slate)
                     }
                 }
             }
-            .padding(.horizontal, CCTheme.paddingMedium)
-            .background(CCTheme.backgroundCard)
-            .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
-            .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(CCTheme.hairline)
+                        .frame(height: 4)
+                    Capsule()
+                        .fill(CCTheme.navy)
+                        .frame(width: geo.size.width * goal.progressPercentage, height: 4)
+                }
+            }
+            .frame(height: 4)
         }
+        .padding(.horizontal, CCTheme.space5)
+        .padding(.vertical, CCTheme.space4)
+        .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Quick Link Row
+
+struct QuickLinkRow: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        HStack(spacing: CCTheme.space4) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .regular))
+                .foregroundStyle(CCTheme.ink)
+                .frame(width: 28, alignment: .center)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.ccBody)
+                    .foregroundStyle(CCTheme.ink)
+                Text(subtitle)
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(CCTheme.mist)
+        }
+        .padding(.horizontal, CCTheme.space5)
+        .padding(.vertical, CCTheme.space4)
+        .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Circle List Row
+
+struct CircleListRow: View {
+    let circle: Circle
+
+    var body: some View {
+        HStack(spacing: CCTheme.space4) {
+            Image(systemName: circle.iconName)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(CCTheme.navy)
+                .frame(width: 36, height: 36)
+                .background(CCTheme.fog)
+                .clipShape(SwiftUI.Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(circle.name)
+                    .font(.ccBody)
+                    .foregroundStyle(CCTheme.ink)
+                Text("\(circle.memberCount) members • \(circle.goals.count) goals")
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(CCTheme.mist)
+        }
+        .padding(.horizontal, CCTheme.space5)
+        .padding(.vertical, CCTheme.space4)
+        .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Inline Empty State
+
+struct InlineEmptyState: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        HStack(spacing: CCTheme.space4) {
+            Image(systemName: icon)
+                .font(.system(size: 22, weight: .regular))
+                .foregroundStyle(CCTheme.mist)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.ccBody)
+                    .foregroundStyle(CCTheme.ink)
+                Text(subtitle)
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+            }
+            Spacer()
+        }
+        .padding(CCTheme.space4)
+        .background(CCTheme.fog)
+        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
     }
 }
 

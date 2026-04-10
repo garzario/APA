@@ -8,104 +8,157 @@ struct TransactionDetailView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: CCTheme.paddingLarge) {
-                    // Merchant header
-                    VStack(spacing: 12) {
-                        Image(systemName: transaction.category.icon)
-                            .font(.system(size: 44))
-                            .foregroundStyle(CCTheme.primaryBlue)
-                            .frame(width: 90, height: 90)
-                            .background(CCTheme.lightBlue)
-                            .clipShape(SwiftUI.Circle())
-
-                        Text(transaction.merchantName)
-                            .font(.title2.bold())
-                            .foregroundStyle(CCTheme.textPrimary)
-
-                        Text("-$\(Int(transaction.amount).formatted())")
-                            .font(.system(size: 38, weight: .bold, design: .rounded))
-                            .foregroundStyle(CCTheme.textPrimary)
+                VStack(alignment: .leading, spacing: CCTheme.space7) {
+                    heroSection
+                    detailsSection
+                    if let card = usedCard {
+                        rewardsEarnedSection(card)
                     }
-                    .padding(.top, CCTheme.paddingLarge)
-
-                    // Details card
-                    VStack(spacing: 0) {
-                        detailRow(label: "Category", value: transaction.category.rawValue, icon: transaction.category.icon)
-                        Divider().padding(.leading, 56)
-                        detailRow(label: "Date", value: transaction.date.formatted(date: .long, time: .omitted), icon: "calendar")
-                        Divider().padding(.leading, 56)
-                        if let card = state.currentUser.cards.first(where: { $0.id == transaction.cardId }) {
-                            detailRow(label: "Card used", value: "\(card.name) • \(card.lastFourDigits)", icon: "creditcard.fill")
-                            Divider().padding(.leading, 56)
-                            let earned = Int(transaction.amount * card.cardType.rewardRate(for: transaction.category) / 100)
-                            detailRow(label: "Rewards earned", value: "$\(earned) cash back", icon: "star.fill")
-                        }
-                    }
-                    .padding(.horizontal, CCTheme.paddingMedium)
-                    .background(CCTheme.backgroundCard)
-                    .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
-                    .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
-
-                    // Better card tip
-                    if let card = state.currentUser.cards.first(where: { $0.id == transaction.cardId }),
-                       let bestCard = bestCard(for: transaction.category),
-                       bestCard.id != card.id {
-                        betterCardTip(used: card, better: bestCard)
-                    }
+                    betterCardTip
                 }
-                .padding(.horizontal, CCTheme.paddingMedium)
-                .padding(.bottom, CCTheme.paddingLarge)
+                .padding(.vertical, CCTheme.space5)
+                .padding(.bottom, CCTheme.space8)
             }
-            .background(CCTheme.backgroundPrimary)
+            .background(CCTheme.canvas)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(CCTheme.ink)
+                    }
+                }
+                ToolbarItem(placement: .principal) {
+                    Text("Transaction")
+                        .font(.ccHeadline)
+                        .foregroundStyle(CCTheme.ink)
                 }
             }
         }
     }
 
-    private func detailRow(label: String, value: String, icon: String) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: icon)
-                .font(.subheadline)
-                .foregroundStyle(CCTheme.primaryBlue)
-                .frame(width: 32, height: 32)
-                .background(CCTheme.lightBlue)
-                .clipShape(SwiftUI.Circle())
-            Text(label)
-                .font(.subheadline)
-                .foregroundStyle(CCTheme.textSecondary)
-            Spacer()
-            Text(value)
-                .font(.subheadline.bold())
-                .foregroundStyle(CCTheme.textPrimary)
-        }
-        .padding(.vertical, 14)
+    private var usedCard: Card? {
+        state.currentUser.cards.first(where: { $0.id == transaction.cardId })
     }
 
-    private func betterCardTip(used: Card, better: Card) -> some View {
-        let betterRate = better.cardType.rewardRate(for: transaction.category)
-        let usedRate = used.cardType.rewardRate(for: transaction.category)
-        let extraRewards = Int(transaction.amount * (betterRate - usedRate) / 100)
+    // MARK: - Hero
 
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Image(systemName: "lightbulb.fill")
-                    .foregroundStyle(.yellow)
-                Text("Tip for next time")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(CCTheme.textPrimary)
-            }
-            Text("Using your **\(better.name)** for \(transaction.category.rawValue.lowercased()) would have earned you $\(extraRewards) more in rewards.")
-                .font(.caption)
-                .foregroundStyle(CCTheme.textSecondary)
+    private var heroSection: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space3) {
+            Text(transaction.category.rawValue.uppercased())
+                .font(.ccCaption)
+                .foregroundStyle(CCTheme.slate)
+                .tracking(0.5)
+
+            Text(transaction.merchantName)
+                .font(.ccLargeTitle)
+                .foregroundStyle(CCTheme.ink)
+
+            Text("-$\(Int(transaction.amount).formatted())")
+                .font(.ccAmountLarge)
+                .foregroundStyle(CCTheme.ink)
+                .monospacedDigit()
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(CCTheme.paddingMedium)
-        .background(CCTheme.lightBlue.opacity(0.4))
-        .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
+        .padding(.horizontal, CCTheme.space5)
+    }
+
+    // MARK: - Details
+
+    private var detailsSection: some View {
+        CCSection("Details") {
+            VStack(spacing: 0) {
+                Divider()
+                row(label: "Date", value: transaction.date.formatted(date: .long, time: .omitted))
+                Divider().padding(.leading, CCTheme.space5)
+                row(label: "Category", value: transaction.category.rawValue)
+                if let card = usedCard {
+                    Divider().padding(.leading, CCTheme.space5)
+                    row(label: "Card", value: "\(card.name) •••• \(card.lastFourDigits)")
+                }
+                Divider()
+            }
+        }
+    }
+
+    // MARK: - Rewards Earned
+
+    private func rewardsEarnedSection(_ card: Card) -> some View {
+        let rate = card.cardType.rewardRate(for: transaction.category)
+        let earned = transaction.amount * rate / 100
+
+        return CCSection("Rewards earned") {
+            VStack(spacing: 0) {
+                Divider()
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(String(format: "%.1f", rate))x on \(transaction.category.rawValue.lowercased())")
+                            .font(.ccBody)
+                            .foregroundStyle(CCTheme.ink)
+                        Text("with \(card.name)")
+                            .font(.ccFootnote)
+                            .foregroundStyle(CCTheme.slate)
+                    }
+                    Spacer()
+                    Text("$\(String(format: "%.2f", earned))")
+                        .font(.ccBody)
+                        .foregroundStyle(CCTheme.positive)
+                        .monospacedDigit()
+                }
+                .padding(.horizontal, CCTheme.space5)
+                .padding(.vertical, CCTheme.space4)
+                Divider()
+            }
+        }
+    }
+
+    // MARK: - Better Card Tip
+
+    @ViewBuilder
+    private var betterCardTip: some View {
+        if let used = usedCard,
+           let bestCard = bestCard(for: transaction.category),
+           bestCard.id != used.id {
+            let betterRate = bestCard.cardType.rewardRate(for: transaction.category)
+            let usedRate = used.cardType.rewardRate(for: transaction.category)
+            let extra = transaction.amount * (betterRate - usedRate) / 100
+
+            VStack(alignment: .leading, spacing: CCTheme.space3) {
+                HStack(spacing: CCTheme.space2) {
+                    Image(systemName: "lightbulb")
+                        .font(.system(size: 12, weight: .medium))
+                    Text("TIP")
+                        .font(.ccCaption)
+                        .tracking(0.5)
+                }
+                .foregroundStyle(CCTheme.navy)
+
+                Text("Next time, use your ") + Text(bestCard.name).font(.ccBody.bold()).foregroundColor(CCTheme.ink) + Text(" for \(transaction.category.rawValue.lowercased()) to earn $\(String(format: "%.2f", extra)) more in rewards.")
+            }
+            .font(.ccBody)
+            .foregroundStyle(CCTheme.ink)
+            .padding(CCTheme.space5)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(CCTheme.fog)
+            .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+            .padding(.horizontal, CCTheme.space5)
+        }
+    }
+
+    private func row(label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.ccBody)
+                .foregroundStyle(CCTheme.slate)
+            Spacer()
+            Text(value)
+                .font(.ccBody)
+                .foregroundStyle(CCTheme.ink)
+        }
+        .padding(.horizontal, CCTheme.space5)
+        .padding(.vertical, CCTheme.space4)
     }
 
     private func bestCard(for category: SpendingCategory) -> Card? {
