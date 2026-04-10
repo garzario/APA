@@ -1,120 +1,572 @@
 import SwiftUI
 
+/// Multi-step onboarding that sets up the user's first circle, invites members,
+/// and creates an initial goal. This is where the Capital Circles experience
+/// really starts — the user ends onboarding with a real, usable hub.
 struct OnboardingView: View {
     @Environment(AppState.self) private var appState
-    @State private var currentPage = 0
+    @Environment(AppStateManager.self) private var state
+    @State private var step: OnboardingStep = .welcome
 
-    private let pages: [OnboardingPage] = [
-        OnboardingPage(
-            eyebrow: "Welcome",
-            title: "Your family's\nfinancial home",
-            body: "Capital Circles is a new way to reach your financial goals. Together, privately, and powered by Capital One."
-        ),
-        OnboardingPage(
-            eyebrow: "Circles",
-            title: "Better together,\nstill yours alone",
-            body: "Create circles with family, friends, and roommates to support each other without combining finances."
-        ),
-        OnboardingPage(
-            eyebrow: "Privacy",
-            title: "Your money\nstays your money",
-            body: "You choose what to share, with whom, and how much. Nothing is visible unless you opt in."
-        ),
-        OnboardingPage(
-            eyebrow: "Insights",
-            title: "Smarter spending,\nwithout the work",
-            body: "Monthly AI summaries of your spending with honest, actionable tips to reach your goals faster."
-        ),
-        OnboardingPage(
-            eyebrow: "Cards",
-            title: "Every purchase,\noptimized",
-            body: "Always know which Capital One card earns the best rewards for what you are buying."
-        )
-    ]
+    enum OnboardingStep: Int, CaseIterable {
+        case welcome
+        case intro
+        case circleType
+        case circleName
+        case circleMembers
+        case firstGoal
+        case ready
+    }
+
+    // Form state
+    @State private var selectedType: CircleType = .family
+    @State private var circleName: String = ""
+    @State private var invitedUsers: Set<UUID> = []
+    @State private var goalTitle: String = ""
+    @State private var goalTargetText: String = ""
+    @State private var goalIcon: String = "airplane"
 
     var body: some View {
         VStack(spacing: 0) {
-            TabView(selection: $currentPage) {
-                ForEach(Array(pages.enumerated()), id: \.offset) { index, page in
-                    pageView(page)
-                        .tag(index)
+            progressBar
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: CCTheme.space6) {
+                    switch step {
+                    case .welcome: welcomeStep
+                    case .intro: introStep
+                    case .circleType: circleTypeStep
+                    case .circleName: circleNameStep
+                    case .circleMembers: circleMembersStep
+                    case .firstGoal: firstGoalStep
+                    case .ready: readyStep
+                    }
                 }
+                .padding(.horizontal, CCTheme.space5)
+                .padding(.top, CCTheme.space6)
+                .padding(.bottom, CCTheme.space9)
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
 
-            VStack(spacing: CCTheme.space4) {
-                HStack(spacing: 6) {
-                    ForEach(0..<pages.count, id: \.self) { index in
-                        Capsule()
-                            .fill(currentPage == index ? CCTheme.navy : CCTheme.hairline)
-                            .frame(width: currentPage == index ? 24 : 6, height: 6)
-                            .animation(.easeInOut(duration: 0.25), value: currentPage)
-                    }
-                }
-
-                Button {
-                    if currentPage < pages.count - 1 {
-                        withAnimation { currentPage += 1 }
-                    } else {
-                        complete()
-                    }
-                } label: {
-                    Text(currentPage < pages.count - 1 ? "Continue" : "Get started")
-                }
-                .buttonStyle(CCPrimaryButtonStyle())
-
-                if currentPage < pages.count - 1 {
-                    Button { complete() } label: {
-                        Text("Skip")
-                            .font(.ccBody)
-                            .foregroundStyle(CCTheme.slate)
-                    }
-                } else {
-                    Color.clear.frame(height: 22)
-                }
-            }
-            .padding(.horizontal, CCTheme.space5)
-            .padding(.bottom, CCTheme.space6)
+            bottomBar
         }
         .background(CCTheme.canvas)
     }
 
-    private func pageView(_ page: OnboardingPage) -> some View {
-        VStack(alignment: .leading, spacing: CCTheme.space5) {
-            Spacer()
+    // MARK: - Progress bar
 
-            Text(page.eyebrow.uppercased())
+    private var progressBar: some View {
+        HStack(spacing: 4) {
+            ForEach(0..<OnboardingStep.allCases.count, id: \.self) { index in
+                Capsule()
+                    .fill(index <= step.rawValue ? CCTheme.navy : CCTheme.hairline)
+                    .frame(height: 3)
+                    .animation(.easeInOut(duration: 0.2), value: step)
+            }
+        }
+        .padding(.horizontal, CCTheme.space5)
+        .padding(.top, CCTheme.space5)
+    }
+
+    // MARK: - Step 1: Welcome
+
+    private var welcomeStep: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space5) {
+            Spacer(minLength: CCTheme.space8)
+
+            Text("WELCOME")
                 .font(.ccCaption)
                 .foregroundStyle(CCTheme.slate)
                 .tracking(0.5)
 
-            Text(page.title)
-                .font(.system(size: 38, weight: .bold, design: .default))
+            Text("Reach goals\ntogether,\nnot alone.")
+                .font(.system(size: 42, weight: .bold))
                 .foregroundStyle(CCTheme.ink)
-                .lineSpacing(2)
-                .fixedSize(horizontal: false, vertical: true)
+                .lineSpacing(4)
 
-            Text(page.body)
+            Text("Capital Circles is a new way to save with the people who matter. Create shared goals with family, friends, or roommates, without combining your accounts.")
                 .font(.ccBody)
                 .foregroundStyle(CCTheme.slate)
-                .lineSpacing(4)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Spacer()
-            Spacer()
+                .lineSpacing(5)
+                .padding(.top, CCTheme.space3)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - Step 2: Intro
+
+    private var introStep: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space7) {
+            VStack(alignment: .leading, spacing: CCTheme.space3) {
+                Text("HOW IT WORKS")
+                    .font(.ccCaption)
+                    .foregroundStyle(CCTheme.slate)
+                    .tracking(0.5)
+                Text("Your accounts\nstay yours")
+                    .font(.system(size: 36, weight: .bold))
+                    .foregroundStyle(CCTheme.ink)
+                    .lineSpacing(2)
+            }
+            .padding(.top, CCTheme.space4)
+
+            VStack(alignment: .leading, spacing: CCTheme.space5) {
+                principleRow(
+                    number: "1",
+                    title: "Create a circle",
+                    body: "Invite the people you want to save with. Family, friends, roommates, or your partner."
+                )
+                principleRow(
+                    number: "2",
+                    title: "Set shared goals",
+                    body: "Pick what you are saving for together. A trip, a home, an emergency fund."
+                )
+                principleRow(
+                    number: "3",
+                    title: "Track progress together",
+                    body: "Everyone contributes from their own account. Nobody sees anyone else's private finances."
+                )
+            }
+        }
+    }
+
+    private func principleRow(number: String, title: String, body: String) -> some View {
+        HStack(alignment: .top, spacing: CCTheme.space4) {
+            Text(number)
+                .font(.ccHeadline)
+                .foregroundStyle(.white)
+                .frame(width: 32, height: 32)
+                .background(CCTheme.navy)
+                .clipShape(SwiftUI.Circle())
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.ccBody.bold())
+                    .foregroundStyle(CCTheme.ink)
+                Text(body)
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+                    .lineSpacing(3)
+            }
+        }
+    }
+
+    // MARK: - Step 3: Circle Type
+
+    private var circleTypeStep: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space6) {
+            VStack(alignment: .leading, spacing: CCTheme.space2) {
+                Text("YOUR FIRST CIRCLE")
+                    .font(.ccCaption)
+                    .foregroundStyle(CCTheme.slate)
+                    .tracking(0.5)
+                Text("Who are you\nsaving with?")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundStyle(CCTheme.ink)
+                    .lineSpacing(2)
+            }
+
+            VStack(spacing: CCTheme.space3) {
+                ForEach(CircleType.allCases, id: \.self) { type in
+                    Button {
+                        selectedType = type
+                    } label: {
+                        circleTypeCard(type)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private func circleTypeCard(_ type: CircleType) -> some View {
+        let isSelected = selectedType == type
+
+        return HStack(spacing: CCTheme.space4) {
+            Image(systemName: type.icon)
+                .font(.system(size: 20, weight: .regular))
+                .foregroundStyle(isSelected ? .white : CCTheme.navy)
+                .frame(width: 48, height: 48)
+                .background(isSelected ? CCTheme.navy : CCTheme.fog)
+                .clipShape(SwiftUI.Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(type.rawValue)
+                    .font(.ccBody.bold())
+                    .foregroundStyle(CCTheme.ink)
+                Text(circleTypeDescription(type))
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+            }
+
+            Spacer()
+
+            if isSelected {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(CCTheme.navy)
+            }
+        }
+        .padding(CCTheme.space4)
+        .background(isSelected ? CCTheme.cream : CCTheme.canvas)
+        .overlay {
+            RoundedRectangle(cornerRadius: CCTheme.radiusMedium)
+                .stroke(isSelected ? CCTheme.navy : CCTheme.hairline, lineWidth: isSelected ? 2 : 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+    }
+
+    private func circleTypeDescription(_ type: CircleType) -> String {
+        switch type {
+        case .family: return "Parents, kids, and close family"
+        case .roommates: return "People sharing a household"
+        case .friends: return "A trip, event, or group goal"
+        case .couple: return "Two people planning together"
+        }
+    }
+
+    // MARK: - Step 4: Circle Name
+
+    private var circleNameStep: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space6) {
+            VStack(alignment: .leading, spacing: CCTheme.space2) {
+                Text("NAME IT")
+                    .font(.ccCaption)
+                    .foregroundStyle(CCTheme.slate)
+                    .tracking(0.5)
+                Text("What do you\ncall your circle?")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundStyle(CCTheme.ink)
+                    .lineSpacing(2)
+            }
+
+            VStack(alignment: .leading, spacing: CCTheme.space2) {
+                TextField(placeholder, text: $circleName)
+                    .font(.ccTitle)
+                    .foregroundStyle(CCTheme.ink)
+                    .padding(CCTheme.space5)
+                    .background(CCTheme.fog)
+                    .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+                    .textInputAutocapitalization(.words)
+
+                Text("Something your members will recognize")
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+            }
+        }
+    }
+
+    private var placeholder: String {
+        switch selectedType {
+        case .family: return "The Garza family"
+        case .roommates: return "Apartment 3B"
+        case .friends: return "Cancun crew"
+        case .couple: return "Us"
+        }
+    }
+
+    // MARK: - Step 5: Members
+
+    private var circleMembersStep: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space6) {
+            VStack(alignment: .leading, spacing: CCTheme.space2) {
+                Text("INVITE PEOPLE")
+                    .font(.ccCaption)
+                    .foregroundStyle(CCTheme.slate)
+                    .tracking(0.5)
+                Text("Who's joining\nyour circle?")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundStyle(CCTheme.ink)
+                    .lineSpacing(2)
+            }
+
+            Text("Select the people to invite. You can always add more later.")
+                .font(.ccFootnote)
+                .foregroundStyle(CCTheme.slate)
+
+            VStack(spacing: CCTheme.space3) {
+                ForEach(state.allUsers.filter { $0.id != state.currentUser.id }) { user in
+                    Button {
+                        if invitedUsers.contains(user.id) {
+                            invitedUsers.remove(user.id)
+                        } else {
+                            invitedUsers.insert(user.id)
+                        }
+                    } label: {
+                        memberInviteCard(user)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private func memberInviteCard(_ user: User) -> some View {
+        let isSelected = invitedUsers.contains(user.id)
+
+        return HStack(spacing: CCTheme.space4) {
+            CCAvatar(user: user, size: 48)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(user.name)
+                    .font(.ccBody.bold())
+                    .foregroundStyle(CCTheme.ink)
+                Text(user.email)
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+            }
+
+            Spacer()
+
+            ZStack {
+                SwiftUI.Circle()
+                    .fill(isSelected ? CCTheme.navy : CCTheme.canvas)
+                    .overlay {
+                        SwiftUI.Circle()
+                            .stroke(isSelected ? CCTheme.navy : CCTheme.hairline, lineWidth: 2)
+                    }
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+            }
+            .frame(width: 24, height: 24)
+        }
+        .padding(CCTheme.space4)
+        .background(isSelected ? CCTheme.cream : CCTheme.canvas)
+        .overlay {
+            RoundedRectangle(cornerRadius: CCTheme.radiusMedium)
+                .stroke(isSelected ? CCTheme.navy : CCTheme.hairline, lineWidth: isSelected ? 2 : 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+    }
+
+    // MARK: - Step 6: First Goal
+
+    private var firstGoalStep: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space6) {
+            VStack(alignment: .leading, spacing: CCTheme.space2) {
+                Text("FIRST GOAL")
+                    .font(.ccCaption)
+                    .foregroundStyle(CCTheme.slate)
+                    .tracking(0.5)
+                Text("What are you\nsaving for?")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundStyle(CCTheme.ink)
+                    .lineSpacing(2)
+            }
+
+            VStack(alignment: .leading, spacing: CCTheme.space2) {
+                Text("GOAL NAME")
+                    .font(.ccCaption)
+                    .foregroundStyle(CCTheme.slate)
+                    .tracking(0.5)
+                TextField("e.g. Summer vacation", text: $goalTitle)
+                    .font(.ccBody)
+                    .padding(CCTheme.space4)
+                    .background(CCTheme.fog)
+                    .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+                    .textInputAutocapitalization(.sentences)
+            }
+
+            VStack(alignment: .leading, spacing: CCTheme.space2) {
+                Text("TARGET AMOUNT")
+                    .font(.ccCaption)
+                    .foregroundStyle(CCTheme.slate)
+                    .tracking(0.5)
+                HStack(alignment: .firstTextBaseline, spacing: CCTheme.space1) {
+                    Text("$")
+                        .font(.ccTitle)
+                        .foregroundStyle(CCTheme.slate)
+                    TextField("0", text: $goalTargetText)
+                        .font(.ccTitle)
+                        .keyboardType(.numberPad)
+                }
+                .padding(CCTheme.space4)
+                .background(CCTheme.fog)
+                .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+            }
+
+            VStack(alignment: .leading, spacing: CCTheme.space2) {
+                Text("ICON")
+                    .font(.ccCaption)
+                    .foregroundStyle(CCTheme.slate)
+                    .tracking(0.5)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: CCTheme.space3) {
+                        ForEach(iconOptions, id: \.self) { icon in
+                            Button {
+                                goalIcon = icon
+                            } label: {
+                                Image(systemName: icon)
+                                    .font(.system(size: 20, weight: .regular))
+                                    .foregroundStyle(goalIcon == icon ? .white : CCTheme.ink)
+                                    .frame(width: 56, height: 56)
+                                    .background(goalIcon == icon ? CCTheme.navy : CCTheme.fog)
+                                    .clipShape(SwiftUI.Circle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private let iconOptions = [
+        "airplane", "house", "car", "graduationcap", "heart",
+        "sun.max", "gift", "birthday.cake", "laptopcomputer", "shield"
+    ]
+
+    // MARK: - Step 7: Ready
+
+    private var readyStep: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space6) {
+            Spacer(minLength: CCTheme.space8)
+
+            Text("YOU ARE SET")
+                .font(.ccCaption)
+                .foregroundStyle(CCTheme.slate)
+                .tracking(0.5)
+
+            Text("Welcome to\nyour hub.")
+                .font(.system(size: 42, weight: .bold))
+                .foregroundStyle(CCTheme.ink)
+                .lineSpacing(2)
+
+            Text("\(circleName) is ready. \(invitedUsers.count) \(invitedUsers.count == 1 ? "person" : "people") will be invited to join you in saving for \(goalTitle.isEmpty ? "your goal" : goalTitle).")
+                .font(.ccBody)
+                .foregroundStyle(CCTheme.slate)
+                .lineSpacing(5)
+
+            VStack(alignment: .leading, spacing: CCTheme.space4) {
+                summaryRow(label: "Circle", value: circleName)
+                summaryRow(label: "Members", value: "\(invitedUsers.count + 1) including you")
+                summaryRow(label: "First goal", value: goalTitle.isEmpty ? "Skipped" : goalTitle)
+                if let amount = Double(goalTargetText.replacingOccurrences(of: ",", with: "")), amount > 0 {
+                    summaryRow(label: "Target", value: "$\(Int(amount).formatted())")
+                }
+            }
+            .padding(CCTheme.space5)
+            .background(CCTheme.cream)
+            .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+        }
+    }
+
+    private func summaryRow(label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.ccFootnote)
+                .foregroundStyle(CCTheme.slate)
+            Spacer()
+            Text(value)
+                .font(.ccFootnote.bold())
+                .foregroundStyle(CCTheme.ink)
+        }
+    }
+
+    // MARK: - Bottom bar
+
+    private var bottomBar: some View {
+        VStack(spacing: CCTheme.space3) {
+            Button {
+                advance()
+            } label: {
+                Text(primaryButtonText)
+            }
+            .buttonStyle(CCPrimaryButtonStyle())
+            .disabled(!canAdvance)
+            .opacity(canAdvance ? 1 : 0.4)
+
+            if step.rawValue > 0 && step != .ready {
+                Button {
+                    back()
+                } label: {
+                    Text("Back")
+                        .font(.ccBody)
+                        .foregroundStyle(CCTheme.slate)
+                }
+            } else {
+                Color.clear.frame(height: 22)
+            }
+        }
         .padding(.horizontal, CCTheme.space5)
+        .padding(.bottom, CCTheme.space6)
+        .background(CCTheme.canvas)
     }
 
-    private func complete() {
-        let userId = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
-        appState.completeOnboarding(userId: userId)
+    private var primaryButtonText: String {
+        switch step {
+        case .welcome: return "Get started"
+        case .intro: return "Continue"
+        case .circleType: return "Next"
+        case .circleName: return "Next"
+        case .circleMembers: return "Next"
+        case .firstGoal: return "Review"
+        case .ready: return "Enter your hub"
+        }
     }
-}
 
-private struct OnboardingPage {
-    let eyebrow: String
-    let title: String
-    let body: String
+    private var canAdvance: Bool {
+        switch step {
+        case .welcome, .intro, .circleType: return true
+        case .circleName: return !circleName.trimmingCharacters(in: .whitespaces).isEmpty
+        case .circleMembers: return true
+        case .firstGoal:
+            let hasTitle = !goalTitle.trimmingCharacters(in: .whitespaces).isEmpty
+            let hasAmount = Double(goalTargetText.replacingOccurrences(of: ",", with: "")) ?? 0 > 0
+            return hasTitle && hasAmount
+        case .ready: return true
+        }
+    }
+
+    private func advance() {
+        if step == .ready {
+            finishOnboarding()
+            return
+        }
+        if let next = OnboardingStep(rawValue: step.rawValue + 1) {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                step = next
+            }
+        }
+    }
+
+    private func back() {
+        if let prev = OnboardingStep(rawValue: step.rawValue - 1) {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                step = prev
+            }
+        }
+    }
+
+    private func finishOnboarding() {
+        // Replace the default circles with the one the user just created.
+        state.circles.removeAll { $0.type == selectedType && $0.name == circleName }
+
+        // Create circle
+        let newCircle = state.createCircle(
+            name: circleName,
+            type: selectedType,
+            iconName: selectedType.icon
+        )
+
+        // Add selected members
+        for userId in invitedUsers {
+            if let user = state.allUsers.first(where: { $0.id == userId }) {
+                let role: MemberRole = (selectedType == .family && user.name.contains("Diego")) ? .junior : .member
+                state.addMember(user, to: newCircle.id, role: role)
+            }
+        }
+
+        // Create first goal
+        if let targetAmount = Double(goalTargetText.replacingOccurrences(of: ",", with: "")), targetAmount > 0 {
+            _ = state.createGoal(
+                title: goalTitle,
+                iconName: goalIcon,
+                target: targetAmount,
+                deadline: nil,
+                circleId: newCircle.id
+            )
+        }
+
+        appState.completeOnboarding(userId: state.currentUser.id)
+    }
 }

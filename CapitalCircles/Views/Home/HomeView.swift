@@ -1,40 +1,61 @@
 import SwiftUI
 
-/// The Family Hub: the main experience of Capital Circles.
-/// This is where users see their primary circle, shared goals, and personal activity.
+/// The Hub: the main experience of Capital Circles.
+/// Shows the currently active circle with members, shared goals, and activity.
+/// Everything is accessible from here through taps — no need for dedicated tabs
+/// for Circles or Goals.
 struct HomeView: View {
     @Environment(AppStateManager.self) private var state
+    @State private var activeCircleId: UUID?
+    @State private var showCircleSwitcher = false
     @State private var showNotifications = false
-    @State private var selectedTransaction: Transaction?
+    @State private var showCreateGoal = false
+    @State private var showAddMember = false
     @State private var selectedGoal: Goal?
+    @State private var selectedMember: CircleMember?
+    @State private var showCardOptimizer = false
+    @State private var showPersonalGoals = false
 
-    /// The primary circle is the first family-type circle, or the first circle available.
-    private var primaryCircle: Circle? {
-        state.circles.first(where: { $0.type == .family }) ?? state.circles.first
+    private var activeCircle: Circle? {
+        if let activeCircleId {
+            return state.circles.first(where: { $0.id == activeCircleId })
+        }
+        return state.circles.first(where: { $0.type == .family }) ?? state.circles.first
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: CCTheme.space7) {
-                    greetingHeader
-                    if let primaryCircle {
-                        hubSection(primaryCircle)
-                        sharedGoalsSection(primaryCircle)
+                    if let activeCircle {
+                        heroSection(activeCircle)
+                        membersSection(activeCircle)
+                        sharedGoalsSection(activeCircle)
+                        personalSection
+                        activitySection
+                    } else {
+                        emptyState
                     }
-                    personalSection
-                    recentActivitySection
-                    otherCirclesSection
                 }
                 .padding(.vertical, CCTheme.space5)
+                .padding(.bottom, CCTheme.space8)
             }
             .background(CCTheme.canvas)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text("Capital Circles")
-                        .font(.ccHeadline)
-                        .foregroundStyle(CCTheme.ink)
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showCircleSwitcher = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text(activeCircle?.name ?? "Your hub")
+                                .font(.ccHeadline)
+                                .foregroundStyle(CCTheme.ink)
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(CCTheme.slate)
+                        }
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -47,35 +68,89 @@ struct HomeView: View {
                             if state.unreadNotificationCount > 0 {
                                 SwiftUI.Circle()
                                     .fill(CCTheme.red)
-                                    .frame(width: 7, height: 7)
+                                    .frame(width: 8, height: 8)
+                                    .overlay(SwiftUI.Circle().stroke(CCTheme.canvas, lineWidth: 1.5))
                                     .offset(x: 4, y: -2)
                             }
                         }
                     }
                 }
             }
-            .sheet(isPresented: $showNotifications) { NotificationsView() }
-            .sheet(item: $selectedTransaction) { TransactionDetailView(transaction: $0) }
-            .sheet(item: $selectedGoal) { GoalDetailView(goal: $0) }
-            .navigationDestination(for: UUID.self) { id in
-                CircleDetailView(circleId: id)
+            .sheet(isPresented: $showCircleSwitcher) {
+                CircleSwitcherSheet(activeCircleId: $activeCircleId)
+                    .presentationDetents([.medium, .large])
+            }
+            .sheet(isPresented: $showNotifications) {
+                NotificationsView()
+            }
+            .sheet(isPresented: $showCreateGoal) {
+                CreateGoalView(defaultCircleId: activeCircle?.id)
+            }
+            .sheet(isPresented: $showAddMember) {
+                if let activeCircle {
+                    AddMemberView(circleId: activeCircle.id)
+                }
+            }
+            .sheet(item: $selectedGoal) { goal in
+                GoalDetailView(goal: goal)
+            }
+            .sheet(item: $selectedMember) { member in
+                if let activeCircle {
+                    MemberDetailView(member: member, circleId: activeCircle.id)
+                }
+            }
+            .sheet(isPresented: $showCardOptimizer) {
+                NavigationStack { CardSelectorView() }
+            }
+            .sheet(isPresented: $showPersonalGoals) {
+                NavigationStack { PersonalGoalsView() }
             }
         }
     }
 
-    // MARK: - Greeting
+    // MARK: - Hero
 
-    private var greetingHeader: some View {
-        VStack(alignment: .leading, spacing: CCTheme.space2) {
-            Text(greeting)
-                .font(.ccCaption)
-                .foregroundStyle(CCTheme.slate)
-                .textCase(.uppercase)
-                .tracking(0.5)
-            Text(state.currentUser.name.components(separatedBy: " ").first ?? "")
-                .font(.ccLargeTitle)
-                .foregroundStyle(CCTheme.ink)
+    private func heroSection(_ circle: Circle) -> some View {
+        VStack(alignment: .leading, spacing: CCTheme.space6) {
+            VStack(alignment: .leading, spacing: CCTheme.space2) {
+                Text(greeting.uppercased())
+                    .font(.ccCaption)
+                    .foregroundStyle(.white.opacity(0.7))
+                    .tracking(0.5)
+                Text(state.currentUser.name.components(separatedBy: " ").first ?? "")
+                    .font(.ccLargeTitle)
+                    .foregroundStyle(.white)
+            }
+
+            Divider().background(.white.opacity(0.15))
+
+            HStack(spacing: CCTheme.space6) {
+                heroStat(value: "\(circle.memberCount)", label: "Members")
+                heroStat(value: "\(circle.goals.count)", label: "Goals")
+                heroStat(value: "\(Int(circle.totalGoalProgress * 100))%", label: "Progress")
+            }
         }
+        .padding(CCTheme.space6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            ZStack {
+                CCTheme.navy
+                // Subtle Capital One red swoosh accent in corner
+                GeometryReader { geo in
+                    Path { path in
+                        path.move(to: CGPoint(x: geo.size.width * 0.5, y: geo.size.height + 20))
+                        path.addQuadCurve(
+                            to: CGPoint(x: geo.size.width + 20, y: geo.size.height * 0.4),
+                            control: CGPoint(x: geo.size.width, y: geo.size.height + 40)
+                        )
+                        path.addLine(to: CGPoint(x: geo.size.width + 20, y: geo.size.height + 20))
+                        path.closeSubpath()
+                    }
+                    .fill(CCTheme.red.opacity(0.9))
+                }
+            }
+        )
+        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusLarge))
         .padding(.horizontal, CCTheme.space5)
     }
 
@@ -88,102 +163,100 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Family Hub
-
-    private func hubSection(_ circle: Circle) -> some View {
-        NavigationLink(value: circle.id) {
-            VStack(alignment: .leading, spacing: CCTheme.space5) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: CCTheme.space1) {
-                        Text(circle.type.rawValue.uppercased())
-                            .font(.ccCaption)
-                            .foregroundStyle(.white.opacity(0.7))
-                            .tracking(1)
-                        Text(circle.name)
-                            .font(.ccTitle)
-                            .foregroundStyle(.white)
-                    }
-                    Spacer()
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.85))
-                }
-
-                // Member avatars row
-                HStack(spacing: -10) {
-                    ForEach(circle.members.prefix(4)) { member in
-                        Image(systemName: member.user.avatarIcon)
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(.white)
-                            .frame(width: 36, height: 36)
-                            .background(CCTheme.navy.opacity(0.9))
-                            .clipShape(SwiftUI.Circle())
-                            .overlay {
-                                SwiftUI.Circle().stroke(.white, lineWidth: 2)
-                            }
-                    }
-                    if circle.members.count > 4 {
-                        Text("+\(circle.members.count - 4)")
-                            .font(.ccFootnote.bold())
-                            .foregroundStyle(.white)
-                            .frame(width: 36, height: 36)
-                            .background(CCTheme.navy.opacity(0.9))
-                            .clipShape(SwiftUI.Circle())
-                            .overlay {
-                                SwiftUI.Circle().stroke(.white, lineWidth: 2)
-                            }
-                    }
-                    Spacer()
-                    Text("\(circle.members.count) members")
-                        .font(.ccFootnote)
-                        .foregroundStyle(.white.opacity(0.85))
-                }
-
-                Divider().background(.white.opacity(0.2))
-
-                HStack(spacing: CCTheme.space6) {
-                    hubStat(label: "Shared goals", value: "\(circle.goals.count)")
-                    hubStat(label: "Progress", value: "\(Int(circle.totalGoalProgress * 100))%")
-                    hubStat(label: "Saved together", value: "$\(shortAmount(circle.goals.reduce(0) { $0 + $1.currentAmount }))")
-                }
-            }
-            .padding(CCTheme.space6)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(CCTheme.navy)
-            .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusLarge))
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal, CCTheme.space5)
-    }
-
-    private func hubStat(label: String, value: String) -> some View {
+    private func heroStat(value: String, label: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(value)
-                .font(.ccHeadline)
+                .font(.ccTitle)
                 .foregroundStyle(.white)
+                .monospacedDigit()
             Text(label)
                 .font(.ccCaption)
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(.white.opacity(0.75))
         }
     }
 
-    // MARK: - Shared Goals (from primary circle)
+    // MARK: - Members
+
+    private func membersSection(_ circle: Circle) -> some View {
+        CCSection(circle.type.rawValue, trailing: AnyView(
+            Button {
+                showAddMember = true
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text("Add")
+                        .font(.ccSubhead)
+                }
+                .foregroundStyle(CCTheme.navy)
+            }
+        )) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: CCTheme.space4) {
+                    ForEach(circle.members) { member in
+                        Button {
+                            selectedMember = member
+                        } label: {
+                            VStack(spacing: CCTheme.space2) {
+                                CCAvatar(user: member.user, size: 56)
+                                VStack(spacing: 2) {
+                                    Text(member.user.name.components(separatedBy: " ").first ?? "")
+                                        .font(.ccFootnote)
+                                        .foregroundStyle(CCTheme.ink)
+                                    Text(member.role.rawValue)
+                                        .font(.ccCaption)
+                                        .foregroundStyle(CCTheme.slate)
+                                }
+                            }
+                            .frame(width: 70)
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    // Add member button
+                    Button {
+                        showAddMember = true
+                    } label: {
+                        VStack(spacing: CCTheme.space2) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundStyle(CCTheme.slate)
+                                .frame(width: 56, height: 56)
+                                .overlay {
+                                    SwiftUI.Circle()
+                                        .strokeBorder(CCTheme.hairline, style: StrokeStyle(lineWidth: 1.5, dash: [4]))
+                                }
+                            Text("Invite")
+                                .font(.ccFootnote)
+                                .foregroundStyle(CCTheme.slate)
+                        }
+                        .frame(width: 70)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, CCTheme.space5)
+            }
+        }
+    }
+
+    // MARK: - Shared Goals
 
     private func sharedGoalsSection(_ circle: Circle) -> some View {
-        CCSection("Family goals", trailing: AnyView(
-            NavigationLink(value: circle.id) {
-                Text("See all")
-                    .font(.ccSubhead)
-                    .foregroundStyle(CCTheme.navy)
+        CCSection("Together we are saving for", trailing: AnyView(
+            Button {
+                showCreateGoal = true
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text("New goal")
+                        .font(.ccSubhead)
+                }
+                .foregroundStyle(CCTheme.navy)
             }
         )) {
             if circle.goals.isEmpty {
-                InlineEmptyState(
-                    icon: "target",
-                    title: "No family goals yet",
-                    subtitle: "Tap the circle above to create one"
-                )
-                .padding(.horizontal, CCTheme.space5)
+                emptyGoalCard
             } else {
                 VStack(spacing: 0) {
                     Divider()
@@ -200,107 +273,130 @@ struct HomeView: View {
                     }
                     Divider()
                 }
-                .background(CCTheme.canvas)
             }
         }
     }
 
-    // MARK: - Personal
+    private var emptyGoalCard: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space3) {
+            Text("No shared goals yet")
+                .font(.ccBody)
+                .foregroundStyle(CCTheme.ink)
+            Text("Create a goal that your circle can work toward together. Nobody shares their accounts, only the progress toward the goal.")
+                .font(.ccFootnote)
+                .foregroundStyle(CCTheme.slate)
+                .lineSpacing(2)
+            Button {
+                showCreateGoal = true
+            } label: {
+                Text("Create first goal")
+                    .font(.ccSubhead.bold())
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, CCTheme.space5)
+                    .padding(.vertical, CCTheme.space3)
+                    .background(CCTheme.navy)
+                    .clipShape(Capsule())
+            }
+            .padding(.top, CCTheme.space2)
+        }
+        .padding(CCTheme.space5)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(CCTheme.cream)
+        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+        .padding(.horizontal, CCTheme.space5)
+    }
+
+    // MARK: - Personal Section
 
     private var personalSection: some View {
-        let personal = state.personalGoals
-        return CCSection("For you") {
+        CCSection("For you") {
             VStack(spacing: 0) {
-                if let first = personal.first {
-                    Divider()
-                    Button {
-                        selectedGoal = first
-                    } label: {
-                        GoalListRow(goal: first)
-                    }
-                    .buttonStyle(.plain)
-                }
                 Divider()
-                NavigationLink(destination: CardSelectorView()) {
+                Button {
+                    showPersonalGoals = true
+                } label: {
+                    QuickLinkRow(
+                        icon: "target",
+                        title: "My personal goals",
+                        subtitle: state.personalGoals.isEmpty ? "Track what matters to you" : "\(state.personalGoals.count) active",
+                        badge: state.personalGoals.isEmpty ? nil : "\(Int(state.personalGoals.first?.progressPercentage ?? 0 * 100))%"
+                    )
+                }
+                .buttonStyle(.plain)
+                Divider().padding(.leading, 56)
+                Button {
+                    showCardOptimizer = true
+                } label: {
                     QuickLinkRow(
                         icon: "creditcard",
                         title: "Card optimizer",
-                        subtitle: "Best card per purchase"
+                        subtitle: "Best Capital One card per purchase",
+                        badge: nil
                     )
                 }
-                Divider().padding(.leading, 56)
-                NavigationLink(destination: StatementView()) {
-                    QuickLinkRow(
-                        icon: "chart.bar",
-                        title: "This month's insights",
-                        subtitle: "AI summary of your spending"
-                    )
-                }
+                .buttonStyle(.plain)
                 Divider()
             }
-            .background(CCTheme.canvas)
         }
     }
 
-    // MARK: - Recent Activity
+    // MARK: - Activity
 
-    private var recentActivitySection: some View {
+    private var activitySection: some View {
         CCSection("Recent activity") {
-            VStack(spacing: 0) {
-                Divider()
-                ForEach(Array(state.transactions.prefix(5).enumerated()), id: \.element.id) { index, transaction in
-                    Button {
-                        selectedTransaction = transaction
-                    } label: {
-                        TransactionRow(transaction: transaction)
-                    }
-                    .buttonStyle(.plain)
-                    if index < 4 {
-                        Divider().padding(.leading, 56)
-                    }
-                }
-                Divider()
-            }
-            .background(CCTheme.canvas)
-        }
-    }
-
-    // MARK: - Other Circles
-
-    @ViewBuilder
-    private var otherCirclesSection: some View {
-        let otherCircles = state.circles.filter { $0.id != primaryCircle?.id }
-        if !otherCircles.isEmpty {
-            CCSection("Other circles") {
+            if state.transactions.isEmpty {
+                Text("No activity yet")
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+                    .padding(.horizontal, CCTheme.space5)
+            } else {
                 VStack(spacing: 0) {
                     Divider()
-                    ForEach(Array(otherCircles.enumerated()), id: \.element.id) { index, circle in
-                        NavigationLink(value: circle.id) {
-                            CircleListRow(circle: circle)
-                        }
-                        .buttonStyle(.plain)
-                        if index < otherCircles.count - 1 {
+                    ForEach(Array(state.transactions.prefix(4).enumerated()), id: \.element.id) { index, transaction in
+                        TransactionRow(transaction: transaction)
+                        if index < 3 {
                             Divider().padding(.leading, 56)
                         }
                     }
                     Divider()
                 }
-                .background(CCTheme.canvas)
             }
         }
     }
 
-    // MARK: - Helpers
+    // MARK: - Empty state when no circles
 
-    private func shortAmount(_ value: Double) -> String {
-        if value >= 1000 {
-            return String(format: "%.0fK", value / 1000)
+    private var emptyState: some View {
+        VStack(alignment: .center, spacing: CCTheme.space5) {
+            Image(systemName: "person.2")
+                .font(.system(size: 48, weight: .light))
+                .foregroundStyle(CCTheme.mist)
+                .padding(.top, CCTheme.space9)
+
+            VStack(spacing: CCTheme.space2) {
+                Text("Your hub is empty")
+                    .font(.ccTitle)
+                    .foregroundStyle(CCTheme.ink)
+                Text("Create your first circle to start reaching goals with the people who matter.")
+                    .font(.ccBody)
+                    .foregroundStyle(CCTheme.slate)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, CCTheme.space6)
+            }
+
+            Button {
+                showCircleSwitcher = true
+            } label: {
+                Text("Create a circle")
+            }
+            .buttonStyle(CCPrimaryButtonStyle())
+            .padding(.horizontal, CCTheme.space5)
+            .padding(.top, CCTheme.space4)
         }
-        return String(Int(value))
     }
 }
 
-// MARK: - Goal List Row
+// MARK: - Goal List Row (reused across the app)
 
 struct GoalListRow: View {
     let goal: Goal
@@ -308,6 +404,13 @@ struct GoalListRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: CCTheme.space3) {
             HStack(alignment: .top) {
+                Image(systemName: goal.iconName)
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(CCTheme.navy)
+                    .frame(width: 32, height: 32)
+                    .background(CCTheme.fog)
+                    .clipShape(SwiftUI.Circle())
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(goal.title)
                         .font(.ccHeadline)
@@ -315,19 +418,15 @@ struct GoalListRow: View {
                     Text("$\(Int(goal.currentAmount).formatted()) of $\(Int(goal.targetAmount).formatted())")
                         .font(.ccFootnote)
                         .foregroundStyle(CCTheme.slate)
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(Int(goal.progressPercentage * 100))%")
-                        .font(.ccHeadline)
-                        .foregroundStyle(CCTheme.ink)
                         .monospacedDigit()
-                    if goal.isShared {
-                        Text("Shared")
-                            .font(.ccCaption)
-                            .foregroundStyle(CCTheme.slate)
-                    }
                 }
+
+                Spacer()
+
+                Text("\(Int(goal.progressPercentage * 100))%")
+                    .font(.ccHeadline)
+                    .foregroundStyle(CCTheme.ink)
+                    .monospacedDigit()
             }
 
             GeometryReader { geo in
@@ -336,7 +435,7 @@ struct GoalListRow: View {
                         .fill(CCTheme.hairline)
                         .frame(height: 4)
                     Capsule()
-                        .fill(CCTheme.navy)
+                        .fill(progressColor)
                         .frame(width: geo.size.width * goal.progressPercentage, height: 4)
                 }
             }
@@ -346,6 +445,12 @@ struct GoalListRow: View {
         .padding(.vertical, CCTheme.space4)
         .contentShape(Rectangle())
     }
+
+    private var progressColor: Color {
+        if goal.progressPercentage >= 1.0 { return CCTheme.positive }
+        if goal.progressPercentage >= 0.75 { return CCTheme.navy }
+        return CCTheme.navy
+    }
 }
 
 // MARK: - Quick Link Row
@@ -354,6 +459,7 @@ struct QuickLinkRow: View {
     let icon: String
     let title: String
     let subtitle: String
+    let badge: String?
 
     var body: some View {
         HStack(spacing: CCTheme.space4) {
@@ -370,6 +476,11 @@ struct QuickLinkRow: View {
                     .foregroundStyle(CCTheme.slate)
             }
             Spacer()
+            if let badge {
+                Text(badge)
+                    .font(.ccCaption)
+                    .foregroundStyle(CCTheme.slate)
+            }
             Image(systemName: "chevron.right")
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(CCTheme.mist)
@@ -377,66 +488,6 @@ struct QuickLinkRow: View {
         .padding(.horizontal, CCTheme.space5)
         .padding(.vertical, CCTheme.space4)
         .contentShape(Rectangle())
-    }
-}
-
-// MARK: - Circle List Row
-
-struct CircleListRow: View {
-    let circle: Circle
-
-    var body: some View {
-        HStack(spacing: CCTheme.space4) {
-            Image(systemName: circle.iconName)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(CCTheme.navy)
-                .frame(width: 36, height: 36)
-                .background(CCTheme.fog)
-                .clipShape(SwiftUI.Circle())
-            VStack(alignment: .leading, spacing: 2) {
-                Text(circle.name)
-                    .font(.ccBody)
-                    .foregroundStyle(CCTheme.ink)
-                Text("\(circle.memberCount) members • \(circle.goals.count) goals")
-                    .font(.ccFootnote)
-                    .foregroundStyle(CCTheme.slate)
-            }
-            Spacer()
-            Image(systemName: "chevron.right")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(CCTheme.mist)
-        }
-        .padding(.horizontal, CCTheme.space5)
-        .padding(.vertical, CCTheme.space4)
-        .contentShape(Rectangle())
-    }
-}
-
-// MARK: - Inline Empty State
-
-struct InlineEmptyState: View {
-    let icon: String
-    let title: String
-    let subtitle: String
-
-    var body: some View {
-        HStack(spacing: CCTheme.space4) {
-            Image(systemName: icon)
-                .font(.system(size: 22, weight: .regular))
-                .foregroundStyle(CCTheme.mist)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.ccBody)
-                    .foregroundStyle(CCTheme.ink)
-                Text(subtitle)
-                    .font(.ccFootnote)
-                    .foregroundStyle(CCTheme.slate)
-            }
-            Spacer()
-        }
-        .padding(CCTheme.space4)
-        .background(CCTheme.fog)
-        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
     }
 }
 
