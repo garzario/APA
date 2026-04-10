@@ -263,7 +263,7 @@ struct OnboardingView: View {
         }
     }
 
-    // MARK: - Step 5: Members (invite by email)
+    // MARK: - Step 5: Members (suggested users + email invites)
 
     private var circleMembersStep: some View {
         VStack(alignment: .leading, spacing: CCTheme.space6) {
@@ -278,10 +278,37 @@ struct OnboardingView: View {
                     .lineSpacing(2)
             }
 
-            Text("Add emails of the people you want to invite. They will get a link to join. You can always add more later or skip for now.")
-                .font(.ccFootnote)
+            // Suggested contacts (pre-existing users we can match by contacts)
+            let suggested = state.allUsers.filter { $0.id != state.currentUser.id }
+            if !suggested.isEmpty {
+                VStack(alignment: .leading, spacing: CCTheme.space3) {
+                    Text("SUGGESTED FROM YOUR CONTACTS")
+                        .font(.ccCaption)
+                        .foregroundStyle(CCTheme.slate)
+                        .tracking(0.5)
+
+                    VStack(spacing: CCTheme.space2) {
+                        ForEach(suggested) { user in
+                            Button {
+                                if invitedUsers.contains(user.id) {
+                                    invitedUsers.remove(user.id)
+                                } else {
+                                    invitedUsers.insert(user.id)
+                                }
+                            } label: {
+                                suggestedUserRow(user)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+
+            Text("Or invite by email")
+                .font(.ccCaption)
                 .foregroundStyle(CCTheme.slate)
-                .lineSpacing(3)
+                .tracking(0.5)
+                .padding(.top, CCTheme.space2)
 
             // Email input
             HStack(spacing: CCTheme.space2) {
@@ -368,6 +395,46 @@ struct OnboardingView: View {
                 .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
             }
         }
+    }
+
+    private func suggestedUserRow(_ user: User) -> some View {
+        let isSelected = invitedUsers.contains(user.id)
+        return HStack(spacing: CCTheme.space3) {
+            CCAvatar(user: user, size: 44)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(user.name)
+                    .font(.ccBody.bold())
+                    .foregroundStyle(CCTheme.ink)
+                Text(user.email)
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+            }
+
+            Spacer()
+
+            ZStack {
+                SwiftUI.Circle()
+                    .fill(isSelected ? CCTheme.navy : CCTheme.canvas)
+                    .overlay {
+                        SwiftUI.Circle()
+                            .stroke(isSelected ? CCTheme.navy : CCTheme.hairline, lineWidth: 2)
+                    }
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+            }
+            .frame(width: 22, height: 22)
+        }
+        .padding(CCTheme.space3)
+        .background(isSelected ? CCTheme.cream : CCTheme.canvas)
+        .overlay {
+            RoundedRectangle(cornerRadius: CCTheme.radiusMedium)
+                .stroke(isSelected ? CCTheme.navy : CCTheme.hairline, lineWidth: isSelected ? 2 : 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
     }
 
     private func addEmail() {
@@ -476,8 +543,8 @@ struct OnboardingView: View {
                 .foregroundStyle(CCTheme.ink)
                 .lineSpacing(2)
 
-            let inviteCount = emailInvites.count
-            Text("\(circleName) is ready. \(inviteCount > 0 ? "\(inviteCount) \(inviteCount == 1 ? "person" : "people") will receive an invite" : "You can invite members anytime from your hub"). Your first goal is \(goalTitle).")
+            let totalInvites = emailInvites.count + invitedUsers.count
+            Text("\(circleName) is ready. \(totalInvites > 0 ? "\(totalInvites) \(totalInvites == 1 ? "person" : "people") will receive an invite" : "You can invite members anytime from your hub"). Your first goal is \(goalTitle).")
                 .font(.ccBody)
                 .foregroundStyle(CCTheme.slate)
                 .lineSpacing(5)
@@ -485,7 +552,7 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: CCTheme.space4) {
                 summaryRow(label: "Circle", value: circleName)
                 summaryRow(label: "Type", value: selectedType.rawValue)
-                summaryRow(label: "Invites", value: inviteCount > 0 ? "\(inviteCount) pending" : "None yet")
+                summaryRow(label: "Invites", value: totalInvites > 0 ? "\(totalInvites) pending" : "None yet")
                 summaryRow(label: "First goal", value: goalTitle)
                 if let amount = Double(goalTargetText.replacingOccurrences(of: ",", with: "")), amount > 0 {
                     summaryRow(label: "Target", value: "$\(Int(amount).formatted())")
@@ -522,7 +589,15 @@ struct OnboardingView: View {
             .disabled(!canAdvance)
             .opacity(canAdvance ? 1 : 0.4)
 
-            if step.rawValue > 0 && step != .ready {
+            if step == .welcome || step == .intro {
+                Button {
+                    skipOnboarding()
+                } label: {
+                    Text("Skip for now")
+                        .font(.ccBody)
+                        .foregroundStyle(CCTheme.slate)
+                }
+            } else if step.rawValue > 0 && step != .ready {
                 Button {
                     back()
                 } label: {
@@ -585,16 +660,21 @@ struct OnboardingView: View {
     }
 
     private func finishOnboarding() {
-        // Clear the demo seed circles so the user starts with exactly the circle they created.
-        state.circles.removeAll()
-        state.personalGoals.removeAll()
-
-        // Create the circle
+        // Create the circle. We keep the seed circles (Garza Family, Team APA)
+        // so the user has test data to explore after onboarding.
         let newCircle = state.createCircle(
             name: circleName,
             type: selectedType,
             iconName: selectedType.icon
         )
+
+        // Add selected pre-existing users as real members
+        for userId in invitedUsers {
+            if let user = state.allUsers.first(where: { $0.id == userId }) {
+                let role: MemberRole = (selectedType == .family && user.name.contains("Diego")) ? .junior : .member
+                state.addMember(user, to: newCircle.id, role: role)
+            }
+        }
 
         // Create the first goal
         if let targetAmount = Double(goalTargetText.replacingOccurrences(of: ",", with: "")), targetAmount > 0 {
@@ -616,6 +696,12 @@ struct OnboardingView: View {
             )
         }
 
+        appState.completeOnboarding(userId: state.currentUser.id)
+    }
+
+    /// Skip setup entirely and go straight to the pre-seeded test data.
+    /// Useful for trying the app quickly without going through the full flow.
+    private func skipOnboarding() {
         appState.completeOnboarding(userId: state.currentUser.id)
     }
 }

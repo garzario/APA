@@ -123,6 +123,37 @@ enum SeedData {
             joinedDate: Date(timeIntervalSinceNow: -86400 * 250)
         )
 
+        // Additional test users for demo purposes
+        let sofia = User(
+            id: UUID(uuidString: "66666666-6666-6666-6666-666666666666")!,
+            name: "Sofia Ramirez",
+            email: "sofia.ramirez@gmail.com",
+            avatarIcon: "person.fill",
+            cards: [],
+            transactions: [],
+            joinedDate: Date(timeIntervalSinceNow: -86400 * 120)
+        )
+
+        let carlos = User(
+            id: UUID(uuidString: "77777777-7777-7777-7777-777777777777")!,
+            name: "Carlos Mendoza",
+            email: "carlos.mendoza@gmail.com",
+            avatarIcon: "person.fill",
+            cards: [],
+            transactions: [],
+            joinedDate: Date(timeIntervalSinceNow: -86400 * 90)
+        )
+
+        let luisa = User(
+            id: UUID(uuidString: "88888888-8888-8888-8888-888888888888")!,
+            name: "Luisa Torres",
+            email: "luisa.torres@gmail.com",
+            avatarIcon: "person.fill",
+            cards: [],
+            transactions: [],
+            joinedDate: Date(timeIntervalSinceNow: -86400 * 60)
+        )
+
         // Circles
         let familyCircleId = UUID(uuidString: "EEEEEEEE-EEEE-EEEE-EEEE-EEEEEEEEEEEE")!
         let teamCircleId = UUID(uuidString: "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF")!
@@ -221,52 +252,30 @@ enum SeedData {
         )
 
         // Statements (historical, most recent first)
+        // Statements in chronological order: January -> April (oldest first, newest last)
         let statements: [SmartStatement] = [
             SmartStatement(
                 id: UUID(),
-                month: "April",
+                month: "January",
                 year: 2026,
-                narrative: "Great month, Patricio. Your spending is 12% lower than March, mainly driven by less dining out. At this pace, you will hit your MacBook Pro goal two months ahead of schedule.",
-                totalSpent: 8623.00,
+                narrative: "January was a fresh start. Holiday spending wound down and you began the year with an intentional pace. Good foundation for the months ahead.",
+                totalSpent: 9460.00,
                 insights: [
-                    Insight(id: UUID(), title: "Dining down 28%", description: "You spent $761 less on dining compared to last month", type: .positive, actionable: nil),
-                    Insight(id: UUID(), title: "Subscription increase", description: "Your streaming services went up $150 this month", type: .warning, actionable: "Review your active subscriptions"),
-                    Insight(id: UUID(), title: "Savings acceleration", description: "Save $500 more and hit your MacBook goal early", type: .tip, actionable: "Set up automatic transfers"),
-                    Insight(id: UUID(), title: "Vacation goal at 63%", description: "Cancun with the Garza family is on track for July", type: .milestone, actionable: nil),
+                    Insight(id: UUID(), title: "Post-holiday reset", description: "You dropped 22% from December's holiday spike", type: .positive, actionable: nil),
+                    Insight(id: UUID(), title: "New year goals set", description: "You created Cancun Vacation and MacBook Pro this month", type: .milestone, actionable: nil),
+                    Insight(id: UUID(), title: "Dining up from December", description: "Restaurant habits returning to normal", type: .tip, actionable: "Pick one home-cooked night per week"),
+                    Insight(id: UUID(), title: "Bills as expected", description: "Subscription and utility charges were steady", type: .positive, actionable: nil),
                 ],
                 categoryBreakdown: [
-                    CategorySpending(id: UUID(), category: .dining, amount: 1969, percentage: 22.8, changeFromLastMonth: -28),
-                    CategorySpending(id: UUID(), category: .groceries, amount: 1778, percentage: 20.6, changeFromLastMonth: 15),
-                    CategorySpending(id: UUID(), category: .transport, amount: 1354, percentage: 15.7, changeFromLastMonth: -5),
-                    CategorySpending(id: UUID(), category: .entertainment, amount: 983, percentage: 11.4, changeFromLastMonth: 8),
-                    CategorySpending(id: UUID(), category: .shopping, amount: 845, percentage: 9.8, changeFromLastMonth: -12),
-                    CategorySpending(id: UUID(), category: .bills, amount: 1121, percentage: 13.0, changeFromLastMonth: 2),
-                    CategorySpending(id: UUID(), category: .other, amount: 573, percentage: 6.7, changeFromLastMonth: -3),
+                    CategorySpending(id: UUID(), category: .dining, amount: 2610, percentage: 27.6, changeFromLastMonth: 18),
+                    CategorySpending(id: UUID(), category: .groceries, amount: 1412, percentage: 14.9, changeFromLastMonth: -8),
+                    CategorySpending(id: UUID(), category: .transport, amount: 1440, percentage: 15.2, changeFromLastMonth: 5),
+                    CategorySpending(id: UUID(), category: .entertainment, amount: 965, percentage: 10.2, changeFromLastMonth: -4),
+                    CategorySpending(id: UUID(), category: .shopping, amount: 730, percentage: 7.7, changeFromLastMonth: -32),
+                    CategorySpending(id: UUID(), category: .bills, amount: 1080, percentage: 11.4, changeFromLastMonth: 0),
+                    CategorySpending(id: UUID(), category: .other, amount: 1223, percentage: 12.9, changeFromLastMonth: -2),
                 ],
-                comparedToLastMonth: -12
-            ),
-            SmartStatement(
-                id: UUID(),
-                month: "March",
-                year: 2026,
-                narrative: "March was a big month. You spent a bit more than February, mostly because of extra dining and a weekend trip. The Emergency Fund crossed the 70% mark, which is real momentum.",
-                totalSpent: 9805.00,
-                insights: [
-                    Insight(id: UUID(), title: "Dining up 14%", description: "Several restaurant weekends added up this month", type: .warning, actionable: "Try cooking more next month"),
-                    Insight(id: UUID(), title: "Travel rewards doubled", description: "You earned 2,400 extra miles on your Venture X", type: .positive, actionable: nil),
-                    Insight(id: UUID(), title: "Emergency Fund at 70%", description: "The Garza family milestone is within reach", type: .milestone, actionable: nil),
-                    Insight(id: UUID(), title: "Subscription creep", description: "A new streaming service added $15 this month", type: .tip, actionable: "Audit your subscriptions quarterly"),
-                ],
-                categoryBreakdown: [
-                    CategorySpending(id: UUID(), category: .dining, amount: 2730, percentage: 27.8, changeFromLastMonth: 14),
-                    CategorySpending(id: UUID(), category: .travel, amount: 1850, percentage: 18.9, changeFromLastMonth: 120),
-                    CategorySpending(id: UUID(), category: .groceries, amount: 1547, percentage: 15.8, changeFromLastMonth: 8),
-                    CategorySpending(id: UUID(), category: .transport, amount: 1425, percentage: 14.5, changeFromLastMonth: -3),
-                    CategorySpending(id: UUID(), category: .entertainment, amount: 910, percentage: 9.3, changeFromLastMonth: 5),
-                    CategorySpending(id: UUID(), category: .shopping, amount: 740, percentage: 7.5, changeFromLastMonth: 10),
-                    CategorySpending(id: UUID(), category: .bills, amount: 603, percentage: 6.2, changeFromLastMonth: 1),
-                ],
-                comparedToLastMonth: 8
+                comparedToLastMonth: -22
             ),
             SmartStatement(
                 id: UUID(),
@@ -293,24 +302,47 @@ enum SeedData {
             ),
             SmartStatement(
                 id: UUID(),
-                month: "January",
+                month: "March",
                 year: 2026,
-                narrative: "January was a fresh start. Holiday spending wound down and you began the year with an intentional pace. Good foundation for the months ahead.",
-                totalSpent: 9460.00,
+                narrative: "March was a big month. You spent a bit more than February, mostly because of extra dining and a weekend trip. The Emergency Fund crossed the 70% mark, which is real momentum.",
+                totalSpent: 9805.00,
                 insights: [
-                    Insight(id: UUID(), title: "Post-holiday reset", description: "You dropped 22% from December's holiday spike", type: .positive, actionable: nil),
-                    Insight(id: UUID(), title: "New year goals set", description: "You created Cancun Vacation and MacBook Pro this month", type: .milestone, actionable: nil),
-                    Insight(id: UUID(), title: "Dining up from December", description: "Restaurant habits returning to normal", type: .tip, actionable: "Pick one home-cooked night per week"),
-                    Insight(id: UUID(), title: "Bills as expected", description: "Subscription and utility charges were steady", type: .positive, actionable: nil),
+                    Insight(id: UUID(), title: "Dining up 14%", description: "Several restaurant weekends added up this month", type: .warning, actionable: "Try cooking more next month"),
+                    Insight(id: UUID(), title: "Travel rewards doubled", description: "You earned 2,400 extra miles on your Venture X", type: .positive, actionable: nil),
+                    Insight(id: UUID(), title: "Emergency Fund at 70%", description: "The Garza family milestone is within reach", type: .milestone, actionable: nil),
+                    Insight(id: UUID(), title: "Subscription creep", description: "A new streaming service added $15 this month", type: .tip, actionable: "Audit your subscriptions quarterly"),
                 ],
                 categoryBreakdown: [
-                    CategorySpending(id: UUID(), category: .dining, amount: 2610, percentage: 27.6, changeFromLastMonth: 18),
-                    CategorySpending(id: UUID(), category: .groceries, amount: 1412, percentage: 14.9, changeFromLastMonth: -8),
-                    CategorySpending(id: UUID(), category: .transport, amount: 1440, percentage: 15.2, changeFromLastMonth: 5),
-                    CategorySpending(id: UUID(), category: .entertainment, amount: 965, percentage: 10.2, changeFromLastMonth: -4),
-                    CategorySpending(id: UUID(), category: .shopping, amount: 730, percentage: 7.7, changeFromLastMonth: -32),
-                    CategorySpending(id: UUID(), category: .bills, amount: 1080, percentage: 11.4, changeFromLastMonth: 0),
-                    CategorySpending(id: UUID(), category: .other, amount: 1223, percentage: 12.9, changeFromLastMonth: -2),
+                    CategorySpending(id: UUID(), category: .dining, amount: 2730, percentage: 27.8, changeFromLastMonth: 14),
+                    CategorySpending(id: UUID(), category: .travel, amount: 1850, percentage: 18.9, changeFromLastMonth: 120),
+                    CategorySpending(id: UUID(), category: .groceries, amount: 1547, percentage: 15.8, changeFromLastMonth: 8),
+                    CategorySpending(id: UUID(), category: .transport, amount: 1425, percentage: 14.5, changeFromLastMonth: -3),
+                    CategorySpending(id: UUID(), category: .entertainment, amount: 910, percentage: 9.3, changeFromLastMonth: 5),
+                    CategorySpending(id: UUID(), category: .shopping, amount: 740, percentage: 7.5, changeFromLastMonth: 10),
+                    CategorySpending(id: UUID(), category: .bills, amount: 603, percentage: 6.2, changeFromLastMonth: 1),
+                ],
+                comparedToLastMonth: 8
+            ),
+            SmartStatement(
+                id: UUID(),
+                month: "April",
+                year: 2026,
+                narrative: "Great month, Patricio. Your spending is 12% lower than March, mainly driven by less dining out. At this pace, you will hit your MacBook Pro goal two months ahead of schedule.",
+                totalSpent: 8623.00,
+                insights: [
+                    Insight(id: UUID(), title: "Dining down 28%", description: "You spent $761 less on dining compared to last month", type: .positive, actionable: nil),
+                    Insight(id: UUID(), title: "Subscription increase", description: "Your streaming services went up $150 this month", type: .warning, actionable: "Review your active subscriptions"),
+                    Insight(id: UUID(), title: "Savings acceleration", description: "Save $500 more and hit your MacBook goal early", type: .tip, actionable: "Set up automatic transfers"),
+                    Insight(id: UUID(), title: "Vacation goal at 63%", description: "Cancun with the Garza family is on track for July", type: .milestone, actionable: nil),
+                ],
+                categoryBreakdown: [
+                    CategorySpending(id: UUID(), category: .dining, amount: 1969, percentage: 22.8, changeFromLastMonth: -28),
+                    CategorySpending(id: UUID(), category: .groceries, amount: 1778, percentage: 20.6, changeFromLastMonth: 15),
+                    CategorySpending(id: UUID(), category: .transport, amount: 1354, percentage: 15.7, changeFromLastMonth: -5),
+                    CategorySpending(id: UUID(), category: .entertainment, amount: 983, percentage: 11.4, changeFromLastMonth: 8),
+                    CategorySpending(id: UUID(), category: .shopping, amount: 845, percentage: 9.8, changeFromLastMonth: -12),
+                    CategorySpending(id: UUID(), category: .bills, amount: 1121, percentage: 13.0, changeFromLastMonth: 2),
+                    CategorySpending(id: UUID(), category: .other, amount: 573, percentage: 6.7, changeFromLastMonth: -3),
                 ],
                 comparedToLastMonth: -22
             ),
@@ -325,7 +357,7 @@ enum SeedData {
 
         return SeedPayload(
             currentUser: patricio,
-            allUsers: [patricio, maria, diego, adan, alana],
+            allUsers: [patricio, maria, diego, adan, alana, sofia, carlos, luisa],
             circles: [familyCircle, teamCircle],
             personalGoals: [personalGoal],
             transactions: transactions,

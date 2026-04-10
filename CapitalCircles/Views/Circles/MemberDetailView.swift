@@ -19,6 +19,14 @@ struct MemberDetailView: View {
         member.user.id == state.currentUser.id
     }
 
+    private var circleType: CircleType {
+        state.circles.first(where: { $0.id == circleId })?.type ?? .family
+    }
+
+    private var displayLabel: String {
+        member.role.label(for: circleType)
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -95,7 +103,7 @@ struct MemberDetailView: View {
                         .foregroundStyle(CCTheme.navy)
                         .frame(width: 28, alignment: .center)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(member.role.rawValue)
+                        Text(displayLabel)
                             .font(.ccBody)
                             .foregroundStyle(CCTheme.ink)
                         Text(roleDescription(member.role))

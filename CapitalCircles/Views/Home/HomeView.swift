@@ -1,9 +1,8 @@
 import SwiftUI
 
-/// The Hub: the main experience of Capital Circles.
-/// Shows the currently active circle with members, shared goals, and activity.
-/// Everything is accessible from here through taps — no need for dedicated tabs
-/// for Circles or Goals.
+/// The Hub: a shared financial wellness view for the active circle.
+/// Focus is on caring for the circle's finances together. Goals are one
+/// tool among many, not the main event.
 struct HomeView: View {
     @Environment(AppStateManager.self) private var state
     @State private var activeCircleId: UUID?
@@ -23,16 +22,25 @@ struct HomeView: View {
         return state.circles.first(where: { $0.type == .family }) ?? state.circles.first
     }
 
+    private var currentMember: CircleMember? {
+        activeCircle?.members.first(where: { $0.user.id == state.currentUser.id })
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: CCTheme.space7) {
                     if let activeCircle {
-                        heroSection(activeCircle)
-                        membersSection(activeCircle)
-                        sharedGoalsSection(activeCircle)
-                        personalSection
-                        activitySection
+                        wellnessHeader(activeCircle)
+                        membersGrid(activeCircle)
+                        familyFinancesSection(activeCircle)
+                        if !activeCircle.goals.isEmpty || !state.personalGoals.isEmpty {
+                            goalsSection(activeCircle)
+                        } else {
+                            goalsPromoCard(activeCircle)
+                        }
+                        quickActionsSection
+                        recentActivityInCircle(activeCircle)
                     } else {
                         emptyState
                     }
@@ -108,10 +116,10 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Hero
+    // MARK: - Wellness Header
 
-    private func heroSection(_ circle: Circle) -> some View {
-        VStack(alignment: .leading, spacing: CCTheme.space6) {
+    private func wellnessHeader(_ circle: Circle) -> some View {
+        VStack(alignment: .leading, spacing: CCTheme.space5) {
             VStack(alignment: .leading, spacing: CCTheme.space2) {
                 Text(greeting.uppercased())
                     .font(.ccCaption)
@@ -124,10 +132,23 @@ struct HomeView: View {
 
             Divider().background(.white.opacity(0.15))
 
-            HStack(spacing: CCTheme.space6) {
-                heroStat(value: "\(circle.memberCount)", label: "Members")
-                heroStat(value: "\(circle.goals.count)", label: "Goals")
-                heroStat(value: "\(Int(circle.totalGoalProgress * 100))%", label: "Progress")
+            // Combined family spending this month
+            VStack(alignment: .leading, spacing: CCTheme.space2) {
+                Text("\(circleSpendingLabel(circle)) THIS MONTH")
+                    .font(.ccCaption)
+                    .foregroundStyle(.white.opacity(0.7))
+                    .tracking(0.5)
+                Text("$\(Int(combinedMonthlySpending).formatted())")
+                    .font(.ccAmountLarge)
+                    .foregroundStyle(.white)
+                    .monospacedDigit()
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.down.right")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text("Trending steady")
+                        .font(.ccFootnote)
+                }
+                .foregroundStyle(.white.opacity(0.85))
             }
         }
         .padding(CCTheme.space6)
@@ -135,7 +156,7 @@ struct HomeView: View {
         .background(
             ZStack {
                 CCTheme.navy
-                // Subtle Capital One red swoosh accent in corner
+                // Capital One red swoosh in corner
                 GeometryReader { geo in
                     Path { path in
                         path.move(to: CGPoint(x: geo.size.width * 0.5, y: geo.size.height + 20))
@@ -163,21 +184,24 @@ struct HomeView: View {
         }
     }
 
-    private func heroStat(value: String, label: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(value)
-                .font(.ccTitle)
-                .foregroundStyle(.white)
-                .monospacedDigit()
-            Text(label)
-                .font(.ccCaption)
-                .foregroundStyle(.white.opacity(0.75))
+    private func circleSpendingLabel(_ circle: Circle) -> String {
+        switch circle.type {
+        case .family: return "FAMILY"
+        case .roommates: return "HOUSEHOLD"
+        case .friends: return "TOGETHER"
+        case .couple: return "WE"
         }
     }
 
-    // MARK: - Members
+    private var combinedMonthlySpending: Double {
+        // Current month statement for the current user, extended for demo.
+        // In production this would sum across all circle members who opted in.
+        state.currentStatement?.totalSpent ?? 0
+    }
 
-    private func membersSection(_ circle: Circle) -> some View {
+    // MARK: - Members Grid
+
+    private func membersGrid(_ circle: Circle) -> some View {
         CCSection(circle.type.rawValue, trailing: AnyView(
             Button {
                 showAddMember = true
@@ -197,23 +221,11 @@ struct HomeView: View {
                         Button {
                             selectedMember = member
                         } label: {
-                            VStack(spacing: CCTheme.space2) {
-                                CCAvatar(user: member.user, size: 56)
-                                VStack(spacing: 2) {
-                                    Text(member.user.name.components(separatedBy: " ").first ?? "")
-                                        .font(.ccFootnote)
-                                        .foregroundStyle(CCTheme.ink)
-                                    Text(member.role.rawValue)
-                                        .font(.ccCaption)
-                                        .foregroundStyle(CCTheme.slate)
-                                }
-                            }
-                            .frame(width: 70)
+                            memberTile(member, in: circle)
                         }
                         .buttonStyle(.plain)
                     }
 
-                    // Add member button
                     Button {
                         showAddMember = true
                     } label: {
@@ -221,7 +233,7 @@ struct HomeView: View {
                             Image(systemName: "plus")
                                 .font(.system(size: 20, weight: .medium))
                                 .foregroundStyle(CCTheme.slate)
-                                .frame(width: 56, height: 56)
+                                .frame(width: 64, height: 64)
                                 .overlay {
                                     SwiftUI.Circle()
                                         .strokeBorder(CCTheme.hairline, style: StrokeStyle(lineWidth: 1.5, dash: [4]))
@@ -230,7 +242,7 @@ struct HomeView: View {
                                 .font(.ccFootnote)
                                 .foregroundStyle(CCTheme.slate)
                         }
-                        .frame(width: 70)
+                        .frame(width: 80)
                     }
                     .buttonStyle(.plain)
                 }
@@ -239,27 +251,146 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Shared Goals
+    private func memberTile(_ member: CircleMember, in circle: Circle) -> some View {
+        VStack(spacing: CCTheme.space2) {
+            CCAvatar(user: member.user, size: 64)
+            VStack(spacing: 2) {
+                Text(member.user.name.components(separatedBy: " ").first ?? "")
+                    .font(.ccFootnote.bold())
+                    .foregroundStyle(CCTheme.ink)
+                    .lineLimit(1)
+                Text(member.role.label(for: circle.type))
+                    .font(.ccCaption)
+                    .foregroundStyle(CCTheme.slate)
+            }
+        }
+        .frame(width: 80)
+    }
 
-    private func sharedGoalsSection(_ circle: Circle) -> some View {
-        CCSection("Together we are saving for", trailing: AnyView(
+    // MARK: - Family Finances
+
+    private func familyFinancesSection(_ circle: Circle) -> some View {
+        CCSection("Financial wellness") {
+            VStack(spacing: 0) {
+                Divider()
+                ForEach(Array(circle.members.enumerated()), id: \.element.id) { index, member in
+                    memberFinanceRow(member, in: circle)
+                    if index < circle.members.count - 1 {
+                        Divider().padding(.leading, CCTheme.space5 + 44)
+                    }
+                }
+                Divider()
+            }
+        }
+    }
+
+    private func memberFinanceRow(_ member: CircleMember, in circle: Circle) -> some View {
+        let canSeeDetails = canCurrentUserSeeSpending(of: member, in: circle)
+        let isMe = member.user.id == state.currentUser.id
+
+        return Button {
+            selectedMember = member
+        } label: {
+            HStack(spacing: CCTheme.space4) {
+                CCAvatar(user: member.user, size: 40)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(member.user.name.components(separatedBy: " ").first ?? "")
+                            .font(.ccBody)
+                            .foregroundStyle(CCTheme.ink)
+                        if isMe {
+                            Text("You")
+                                .font(.ccCaption)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(CCTheme.navy)
+                                .clipShape(Capsule())
+                        }
+                    }
+                    Text(canSeeDetails || isMe ? financeStatus(for: member) : "Private")
+                        .font(.ccFootnote)
+                        .foregroundStyle(CCTheme.slate)
+                }
+
+                Spacer()
+
+                if canSeeDetails || isMe {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("$\(Int(monthlySpending(for: member)).formatted())")
+                            .font(.ccBody)
+                            .foregroundStyle(CCTheme.ink)
+                            .monospacedDigit()
+                        Text("this month")
+                            .font(.ccCaption)
+                            .foregroundStyle(CCTheme.slate)
+                    }
+                } else {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(CCTheme.mist)
+                }
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(CCTheme.mist)
+            }
+            .padding(.horizontal, CCTheme.space5)
+            .padding(.vertical, CCTheme.space4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func canCurrentUserSeeSpending(of member: CircleMember, in circle: Circle) -> Bool {
+        guard let currentMember else { return false }
+        if member.user.id == state.currentUser.id { return true }
+        return currentMember.role.canViewSpending(of: member.role, in: circle.type)
+    }
+
+    private func financeStatus(for member: CircleMember) -> String {
+        // Demo values — in production these would be real
+        if member.user.id == state.currentUser.id {
+            return "On track, 12% under March"
+        }
+        if member.role == .junior {
+            return "Within allowance"
+        }
+        return "On track"
+    }
+
+    private func monthlySpending(for member: CircleMember) -> Double {
+        // Demo values. In production this aggregates per member.
+        if member.user.id == state.currentUser.id {
+            return state.currentStatement?.totalSpent ?? 0
+        }
+        if member.role == .junior { return 320 }
+        return Double(Int.random(in: 3500...6800))
+    }
+
+    // MARK: - Goals (only shown when they exist)
+
+    private func goalsSection(_ circle: Circle) -> some View {
+        let hasShared = !circle.goals.isEmpty
+        let hasPersonal = !state.personalGoals.isEmpty
+
+        return CCSection("Goals", trailing: AnyView(
             Button {
                 showCreateGoal = true
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "plus")
                         .font(.system(size: 11, weight: .semibold))
-                    Text("New goal")
+                    Text("New")
                         .font(.ccSubhead)
                 }
                 .foregroundStyle(CCTheme.navy)
             }
         )) {
-            if circle.goals.isEmpty {
-                emptyGoalCard
-            } else {
-                VStack(spacing: 0) {
-                    Divider()
+            VStack(spacing: 0) {
+                Divider()
+                if hasShared {
                     ForEach(Array(circle.goals.enumerated()), id: \.element.id) { index, goal in
                         Button {
                             selectedGoal = goal
@@ -267,29 +398,53 @@ struct HomeView: View {
                             GoalListRow(goal: goal)
                         }
                         .buttonStyle(.plain)
-                        if index < circle.goals.count - 1 {
+                        if index < circle.goals.count - 1 || hasPersonal {
                             Divider().padding(.leading, CCTheme.space5)
                         }
                     }
-                    Divider()
                 }
+                if hasPersonal {
+                    ForEach(Array(state.personalGoals.prefix(2).enumerated()), id: \.element.id) { index, goal in
+                        Button {
+                            selectedGoal = goal
+                        } label: {
+                            GoalListRow(goal: goal)
+                        }
+                        .buttonStyle(.plain)
+                        if index < min(state.personalGoals.count, 2) - 1 {
+                            Divider().padding(.leading, CCTheme.space5)
+                        }
+                    }
+                }
+                Divider()
             }
         }
     }
 
-    private var emptyGoalCard: some View {
+    // MARK: - Goals Promo (when no goals exist)
+
+    private func goalsPromoCard(_ circle: Circle) -> some View {
         VStack(alignment: .leading, spacing: CCTheme.space3) {
-            Text("No shared goals yet")
-                .font(.ccBody)
+            HStack(spacing: CCTheme.space2) {
+                Image(systemName: "target")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(CCTheme.navy)
+                Text("GOALS")
+                    .font(.ccCaption)
+                    .foregroundStyle(CCTheme.slate)
+                    .tracking(0.5)
+            }
+            Text("Saving for something together?")
+                .font(.ccTitle)
                 .foregroundStyle(CCTheme.ink)
-            Text("Create a goal that your circle can work toward together. Nobody shares their accounts, only the progress toward the goal.")
+            Text("Goals are optional. Create one when your circle wants to work toward something specific, like a trip or an emergency fund. Your hub stays useful either way.")
                 .font(.ccFootnote)
                 .foregroundStyle(CCTheme.slate)
-                .lineSpacing(2)
+                .lineSpacing(3)
             Button {
                 showCreateGoal = true
             } label: {
-                Text("Create first goal")
+                Text("Create a goal")
                     .font(.ccSubhead.bold())
                     .foregroundStyle(.white)
                     .padding(.horizontal, CCTheme.space5)
@@ -302,28 +457,16 @@ struct HomeView: View {
         .padding(CCTheme.space5)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(CCTheme.cream)
-        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusLarge))
         .padding(.horizontal, CCTheme.space5)
     }
 
-    // MARK: - Personal Section
+    // MARK: - Quick Actions
 
-    private var personalSection: some View {
+    private var quickActionsSection: some View {
         CCSection("For you") {
             VStack(spacing: 0) {
                 Divider()
-                Button {
-                    showPersonalGoals = true
-                } label: {
-                    QuickLinkRow(
-                        icon: "target",
-                        title: "My personal goals",
-                        subtitle: state.personalGoals.isEmpty ? "Track what matters to you" : "\(state.personalGoals.count) active",
-                        badge: state.personalGoals.isEmpty ? nil : "\(Int(state.personalGoals.first?.progressPercentage ?? 0 * 100))%"
-                    )
-                }
-                .buttonStyle(.plain)
-                Divider().padding(.leading, 56)
                 Button {
                     showCardOptimizer = true
                 } label: {
@@ -335,15 +478,27 @@ struct HomeView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                Divider().padding(.leading, 56)
+                Button {
+                    showPersonalGoals = true
+                } label: {
+                    QuickLinkRow(
+                        icon: "target",
+                        title: "Personal goals",
+                        subtitle: state.personalGoals.isEmpty ? "Private goals just for you" : "\(state.personalGoals.count) active",
+                        badge: nil
+                    )
+                }
+                .buttonStyle(.plain)
                 Divider()
             }
         }
     }
 
-    // MARK: - Activity
+    // MARK: - Recent Activity
 
-    private var activitySection: some View {
-        CCSection("Recent activity") {
+    private func recentActivityInCircle(_ circle: Circle) -> some View {
+        CCSection("Activity") {
             if state.transactions.isEmpty {
                 Text("No activity yet")
                     .font(.ccFootnote)
@@ -377,7 +532,7 @@ struct HomeView: View {
                 Text("Your hub is empty")
                     .font(.ccTitle)
                     .foregroundStyle(CCTheme.ink)
-                Text("Create your first circle to start reaching goals with the people who matter.")
+                Text("Create your first circle to start looking after finances together.")
                     .font(.ccBody)
                     .foregroundStyle(CCTheme.slate)
                     .multilineTextAlignment(.center)
@@ -435,7 +590,7 @@ struct GoalListRow: View {
                         .fill(CCTheme.hairline)
                         .frame(height: 4)
                     Capsule()
-                        .fill(progressColor)
+                        .fill(CCTheme.navy)
                         .frame(width: geo.size.width * goal.progressPercentage, height: 4)
                 }
             }
@@ -444,12 +599,6 @@ struct GoalListRow: View {
         .padding(.horizontal, CCTheme.space5)
         .padding(.vertical, CCTheme.space4)
         .contentShape(Rectangle())
-    }
-
-    private var progressColor: Color {
-        if goal.progressPercentage >= 1.0 { return CCTheme.positive }
-        if goal.progressPercentage >= 0.75 { return CCTheme.navy }
-        return CCTheme.navy
     }
 }
 
