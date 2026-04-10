@@ -4,39 +4,72 @@ struct OnboardingView: View {
     @Environment(AppState.self) private var appState
     @State private var currentPage = 0
 
-    private let pages: [(icon: String, title: String, description: String)] = [
-        ("person.3.fill", "Better Together",
-         "Create circles with family, friends, and roommates to support each other's financial goals."),
-        ("lock.shield.fill", "Privacy First",
-         "Your finances stay private. You choose what to share, with whom, and how much."),
-        ("chart.bar.fill", "Smart Insights",
-         "AI-powered summaries of your spending with actionable tips to reach your goals faster."),
-        ("creditcard.fill", "Card Optimizer",
-         "Always know which Capital One card to use for maximum rewards on every purchase.")
+    private let pages: [OnboardingPage] = [
+        OnboardingPage(
+            icon: "circle.grid.3x3.circle.fill",
+            title: "Welcome to Capital Circles",
+            description: "A new way to reach your financial goals. Together, privately, intelligently.",
+            color: CCTheme.primaryBlue
+        ),
+        OnboardingPage(
+            icon: "person.3.fill",
+            title: "Better together",
+            description: "Create circles with family, friends, and roommates to support each other without combining finances.",
+            color: CCTheme.accentBlue
+        ),
+        OnboardingPage(
+            icon: "lock.shield.fill",
+            title: "Privacy first",
+            description: "Your finances stay private. You choose what to share, with whom, and how much.",
+            color: CCTheme.successGreen
+        ),
+        OnboardingPage(
+            icon: "sparkles",
+            title: "Smart insights",
+            description: "AI-powered monthly summaries with actionable tips to reach your goals faster.",
+            color: CCTheme.warningOrange
+        ),
+        OnboardingPage(
+            icon: "creditcard.fill",
+            title: "Capital One native",
+            description: "Always know which of your Capital One cards earns the best rewards for every purchase.",
+            color: CCTheme.primaryBlue
+        )
     ]
 
     var body: some View {
         VStack(spacing: 0) {
-            // Pages
             TabView(selection: $currentPage) {
                 ForEach(Array(pages.enumerated()), id: \.offset) { index, page in
-                    VStack(spacing: 24) {
+                    VStack(spacing: 28) {
                         Spacer()
 
                         Image(systemName: page.icon)
-                            .font(.system(size: 70))
-                            .foregroundStyle(CCTheme.primaryBlue)
-                            .padding(.bottom, 8)
+                            .font(.system(size: 80))
+                            .foregroundStyle(.white)
+                            .frame(width: 140, height: 140)
+                            .background(
+                                LinearGradient(
+                                    colors: [page.color, page.color.opacity(0.7)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 32))
+                            .shadow(color: page.color.opacity(0.4), radius: 20, y: 10)
 
-                        Text(page.title)
-                            .font(.title.bold())
-                            .foregroundStyle(CCTheme.textPrimary)
+                        VStack(spacing: 14) {
+                            Text(page.title)
+                                .font(.largeTitle.bold())
+                                .foregroundStyle(CCTheme.textPrimary)
+                                .multilineTextAlignment(.center)
 
-                        Text(page.description)
-                            .font(.body)
-                            .foregroundStyle(CCTheme.textSecondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
+                            Text(page.description)
+                                .font(.body)
+                                .foregroundStyle(CCTheme.textSecondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 32)
+                        }
 
                         Spacer()
                         Spacer()
@@ -45,21 +78,19 @@ struct OnboardingView: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .always))
+            .indexViewStyle(.page(backgroundDisplayMode: .always))
 
-            // Bottom button
-            VStack(spacing: 16) {
+            VStack(spacing: 14) {
                 Button {
                     if currentPage < pages.count - 1 {
                         withAnimation {
                             currentPage += 1
                         }
                     } else {
-                        // In production, this would trigger Capital One OAuth flow
-                        let userId = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
-                        appState.completeOnboarding(userId: userId)
+                        complete()
                     }
                 } label: {
-                    Text(currentPage < pages.count - 1 ? "Next" : "Get Started")
+                    Text(currentPage < pages.count - 1 ? "Continue" : "Get started")
                         .font(.headline)
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
@@ -69,21 +100,26 @@ struct OnboardingView: View {
                 }
 
                 if currentPage < pages.count - 1 {
-                    Button("Skip") {
-                        let userId = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
-                        appState.completeOnboarding(userId: userId)
-                    }
-                    .font(.subheadline)
-                    .foregroundStyle(CCTheme.textSecondary)
+                    Button("Skip intro") { complete() }
+                        .font(.subheadline)
+                        .foregroundStyle(CCTheme.textSecondary)
                 }
             }
             .padding(.horizontal, CCTheme.paddingLarge)
             .padding(.bottom, 40)
         }
+        .background(CCTheme.backgroundPrimary)
+    }
+
+    private func complete() {
+        let userId = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
+        appState.completeOnboarding(userId: userId)
     }
 }
 
-#Preview {
-    OnboardingView()
-        .environment(AppState())
+private struct OnboardingPage {
+    let icon: String
+    let title: String
+    let description: String
+    let color: Color
 }
