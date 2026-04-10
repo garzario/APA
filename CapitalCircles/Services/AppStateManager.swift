@@ -24,18 +24,18 @@ final class AppStateManager {
 
     // MARK: - Smart Statements
 
-    /// Historical statements by month, most recent first
+    /// Historical statements by month, chronological order (oldest first, newest last)
     var statements: [SmartStatement] = []
     var selectedStatementId: UUID?
     var isLoadingStatement: Bool = false
 
-    /// The currently selected statement. Defaults to the most recent.
+    /// The currently selected statement. Defaults to the most recent (last in chronological order).
     var currentStatement: SmartStatement? {
         get {
             if let id = selectedStatementId {
                 return statements.first(where: { $0.id == id })
             }
-            return statements.first
+            return statements.last
         }
         set {
             guard let newValue else { return }
@@ -60,7 +60,8 @@ final class AppStateManager {
         self.personalGoals = seed.personalGoals
         self.transactions = seed.transactions
         self.statements = seed.statements
-        self.selectedStatementId = seed.statements.first?.id
+        // Default to the most recent month (last in chronological order)
+        self.selectedStatementId = seed.statements.last?.id
         self.notifications = seed.notifications
     }
 
@@ -169,20 +170,27 @@ final class AppStateManager {
             date: Date()
         )
 
-        // Try personal goals first
+        // Try personal goals first — reassign the full array so @Observable
+        // reliably triggers UI updates across all reading views.
         if let index = personalGoals.firstIndex(where: { $0.id == goalId }) {
-            personalGoals[index].currentAmount += amount
-            personalGoals[index].contributions.append(contribution)
-            checkMilestone(goal: personalGoals[index])
+            var updated = personalGoals
+            updated[index].currentAmount += amount
+            updated[index].contributions.append(contribution)
+            let mutatedGoal = updated[index]
+            personalGoals = updated
+            checkMilestone(goal: mutatedGoal)
             return
         }
 
-        // Otherwise look in circles
+        // Otherwise look in circles — same reassignment pattern
         for circleIndex in circles.indices {
             if let goalIndex = circles[circleIndex].goals.firstIndex(where: { $0.id == goalId }) {
-                circles[circleIndex].goals[goalIndex].currentAmount += amount
-                circles[circleIndex].goals[goalIndex].contributions.append(contribution)
-                checkMilestone(goal: circles[circleIndex].goals[goalIndex])
+                var updatedCircles = circles
+                updatedCircles[circleIndex].goals[goalIndex].currentAmount += amount
+                updatedCircles[circleIndex].goals[goalIndex].contributions.append(contribution)
+                let mutatedGoal = updatedCircles[circleIndex].goals[goalIndex]
+                circles = updatedCircles
+                checkMilestone(goal: mutatedGoal)
                 return
             }
         }

@@ -70,7 +70,7 @@ struct StatementView: View {
                             expandedInsightId = nil
                         }
                     } label: {
-                        let isSelected = stmt.id == (state.selectedStatementId ?? state.statements.first?.id)
+                        let isSelected = stmt.id == (state.selectedStatementId ?? state.statements.last?.id)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(stmt.month.uppercased())
                                 .font(.ccCaption)

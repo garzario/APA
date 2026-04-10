@@ -147,7 +147,7 @@ struct CircleDetailView: View {
                     Button {
                         selectedMember = member
                     } label: {
-                        MemberRow(member: member)
+                        MemberRow(member: member, circleType: circle.type)
                     }
                     .buttonStyle(.plain)
                     if index < circle.members.count - 1 {
@@ -164,30 +164,26 @@ struct CircleDetailView: View {
 
 struct MemberRow: View {
     let member: CircleMember
+    let circleType: CircleType
 
     var body: some View {
         HStack(spacing: CCTheme.space4) {
-            Image(systemName: member.user.avatarIcon)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(CCTheme.navy)
-                .frame(width: 36, height: 36)
-                .background(CCTheme.fog)
-                .clipShape(SwiftUI.Circle())
+            CCAvatar(user: member.user, size: 40)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(member.user.name)
                     .font(.ccBody)
                     .foregroundStyle(CCTheme.ink)
-                Text(member.role.rawValue)
+                Text(member.role.label(for: circleType))
                     .font(.ccFootnote)
                     .foregroundStyle(CCTheme.slate)
             }
 
             Spacer()
 
-            Text(member.visibilityLevel.rawValue)
-                .font(.ccCaption)
-                .foregroundStyle(CCTheme.slate)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(CCTheme.mist)
         }
         .padding(.horizontal, CCTheme.space5)
         .padding(.vertical, CCTheme.space4)
