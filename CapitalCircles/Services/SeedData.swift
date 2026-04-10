@@ -14,6 +14,13 @@ enum SeedData {
         let notifications: [AppNotification]
     }
 
+    /// Returns just the statements without loading any users/circles.
+    /// The rest of the app state loads from the real backend.
+    static func generateStatements() -> [SmartStatement] {
+        let seed = generate()
+        return seed.statements
+    }
+
     static func generate() -> SeedPayload {
         // Card templates
         let ventureX = Card(

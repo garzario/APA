@@ -140,9 +140,12 @@ struct HomeView: View {
                 .fill(.white.opacity(0.12))
                 .frame(height: 1)
 
-            // Amount block
+            // Amount block — label and value reflect visibility
+            let visibleCount = visibleMemberCount(circle)
+            let label = visibleCount <= 1 ? "YOU SPENT THIS MONTH" : "\(circleSpendingLabel(circle)) SPENT THIS MONTH"
+
             VStack(alignment: .leading, spacing: CCTheme.space2) {
-                Text("\(circleSpendingLabel(circle)) SPENT THIS MONTH")
+                Text(label)
                     .font(.ccCaption)
                     .foregroundStyle(.white.opacity(0.65))
                     .tracking(0.8)
@@ -273,17 +276,24 @@ struct HomeView: View {
     }
 
     private func combinedMonthlySpending(_ circle: Circle) -> Double {
-        // Sum the monthly spending of every visible member in the circle.
-        // Members whose spending is private still count toward the household total
-        // for the current user's planning purposes, but we use their transactions
-        // only when they're visible.
+        // Only sum spending from members whose finances are visible to the
+        // current user, enforcing the circle's privacy rules.
         let cutoff = Date(timeIntervalSinceNow: -86400 * 30)
         var total: Double = 0
         for member in circle.members {
-            let memberTotal = member.user.transactions.filter { $0.date >= cutoff }.reduce(0.0) { $0 + $1.amount }
-            total += memberTotal
+            if canCurrentUserSeeSpending(of: member, in: circle) {
+                let memberTotal = member.user.transactions
+                    .filter { $0.date >= cutoff }
+                    .reduce(0.0) { $0 + $1.amount }
+                total += memberTotal
+            }
         }
         return total
+    }
+
+    /// How many members are visible to the current user, used to label the hero card.
+    private func visibleMemberCount(_ circle: Circle) -> Int {
+        circle.members.filter { canCurrentUserSeeSpending(of: $0, in: circle) }.count
     }
 
     // MARK: - Members Grid

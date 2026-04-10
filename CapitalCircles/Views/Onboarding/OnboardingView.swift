@@ -14,6 +14,7 @@ struct OnboardingView: View {
         case signIn
         case circleType
         case circleName
+        case circlePrivacy
         case circleMembers
         case firstGoal
         case ready
@@ -29,6 +30,9 @@ struct OnboardingView: View {
     @State private var invitedUsers: Set<UUID> = []
     @State private var emailInvites: [String] = []
     @State private var pendingEmail: String = ""
+    @State private var shareSpending: Bool = false
+    @State private var shareCategories: Bool = false
+    @State private var parentsSeeChildren: Bool = true
     @State private var goalTitle: String = ""
     @State private var goalTargetText: String = ""
     @State private var goalIcon: String = "airplane"
@@ -45,6 +49,7 @@ struct OnboardingView: View {
                     case .signIn: signInStep
                     case .circleType: circleTypeStep
                     case .circleName: circleNameStep
+                    case .circlePrivacy: circlePrivacyStep
                     case .circleMembers: circleMembersStep
                     case .firstGoal: firstGoalStep
                     case .ready: readyStep
@@ -341,6 +346,134 @@ struct OnboardingView: View {
 
     // MARK: - Step 5: Members (suggested users + email invites)
 
+    // MARK: - Step 6: Privacy (how does "together we spent" work?)
+
+    private var circlePrivacyStep: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space6) {
+            VStack(alignment: .leading, spacing: CCTheme.space2) {
+                Text("PRIVACY")
+                    .font(.ccCaption)
+                    .foregroundStyle(CCTheme.slate)
+                    .tracking(0.5)
+                Text("How will your circle\nshare finances?")
+                    .font(.system(size: 30, weight: .bold))
+                    .foregroundStyle(CCTheme.ink)
+                    .lineSpacing(2)
+            }
+
+            HStack(alignment: .top, spacing: CCTheme.space3) {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(CCTheme.navy)
+                Text("This is sensitive. Pick how much you're comfortable sharing. You can change it anytime from the circle settings.")
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+                    .lineSpacing(3)
+            }
+            .padding(CCTheme.space4)
+            .background(CCTheme.cream)
+            .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+
+            // Always visible note
+            HStack(alignment: .top, spacing: CCTheme.space3) {
+                Image(systemName: "target")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(CCTheme.positive)
+                Text("Shared goals are always visible to every member. That's the whole point of a circle.")
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+            }
+            .padding(CCTheme.space4)
+            .background(CCTheme.fog)
+            .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+
+            // Type-specific options
+            switch selectedType {
+            case .family:
+                onboardingToggle(
+                    title: "Parents see children's cards",
+                    subtitle: "Recommended. Helps you guide their money habits.",
+                    isOn: $parentsSeeChildren
+                )
+                onboardingToggle(
+                    title: "Parents see each other's spending",
+                    subtitle: "Off by default. Each parent stays private from the other.",
+                    isOn: $shareSpending
+                )
+                Text("Children NEVER see parent finances. This is enforced and cannot be changed.")
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+                    .padding(.top, CCTheme.space2)
+            case .couple:
+                onboardingToggle(
+                    title: "Share spending categories",
+                    subtitle: "Your partner sees where you spend, not how much.",
+                    isOn: $shareCategories
+                )
+                onboardingToggle(
+                    title: "Share full spending",
+                    subtitle: "Your partner sees categories and amounts.",
+                    isOn: $shareSpending
+                )
+            case .roommates:
+                HStack(alignment: .top, spacing: CCTheme.space3) {
+                    Image(systemName: "house")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(CCTheme.navy)
+                    Text("Roommate circles share goals and household expenses only. Personal spending stays private for everyone.")
+                        .font(.ccFootnote)
+                        .foregroundStyle(CCTheme.slate)
+                        .lineSpacing(3)
+                }
+                .padding(CCTheme.space4)
+                .background(CCTheme.fog)
+                .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+            case .friends:
+                HStack(alignment: .top, spacing: CCTheme.space3) {
+                    Image(systemName: "person.2")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(CCTheme.navy)
+                    Text("Friend circles are built around shared goals. Nobody sees anyone else's personal spending.")
+                        .font(.ccFootnote)
+                        .foregroundStyle(CCTheme.slate)
+                        .lineSpacing(3)
+                }
+                .padding(CCTheme.space4)
+                .background(CCTheme.fog)
+                .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+            }
+        }
+    }
+
+    private func onboardingToggle(title: String, subtitle: String, isOn: Binding<Bool>) -> some View {
+        VStack(alignment: .leading, spacing: CCTheme.space3) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.ccBody.bold())
+                        .foregroundStyle(CCTheme.ink)
+                    Text(subtitle)
+                        .font(.ccFootnote)
+                        .foregroundStyle(CCTheme.slate)
+                        .lineSpacing(2)
+                }
+                Spacer()
+                Toggle("", isOn: isOn)
+                    .labelsHidden()
+                    .tint(CCTheme.navy)
+            }
+        }
+        .padding(CCTheme.space4)
+        .background(CCTheme.canvas)
+        .overlay {
+            RoundedRectangle(cornerRadius: CCTheme.radiusMedium)
+                .stroke(CCTheme.hairline, lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+    }
+
+    // MARK: - Step 7: Members
+
     private var circleMembersStep: some View {
         VStack(alignment: .leading, spacing: CCTheme.space6) {
             VStack(alignment: .leading, spacing: CCTheme.space2) {
@@ -354,37 +487,10 @@ struct OnboardingView: View {
                     .lineSpacing(2)
             }
 
-            // Suggested contacts (pre-existing users we can match by contacts)
-            let suggested = state.allUsers.filter { $0.id != state.currentUser.id }
-            if !suggested.isEmpty {
-                VStack(alignment: .leading, spacing: CCTheme.space3) {
-                    Text("SUGGESTED FROM YOUR CONTACTS")
-                        .font(.ccCaption)
-                        .foregroundStyle(CCTheme.slate)
-                        .tracking(0.5)
-
-                    VStack(spacing: CCTheme.space2) {
-                        ForEach(suggested) { user in
-                            Button {
-                                if invitedUsers.contains(user.id) {
-                                    invitedUsers.remove(user.id)
-                                } else {
-                                    invitedUsers.insert(user.id)
-                                }
-                            } label: {
-                                suggestedUserRow(user)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-            }
-
-            Text("Or invite by email")
-                .font(.ccCaption)
+            Text("Add the email of anyone you want to invite. They will get a link to join your circle.")
+                .font(.ccFootnote)
                 .foregroundStyle(CCTheme.slate)
-                .tracking(0.5)
-                .padding(.top, CCTheme.space2)
+                .lineSpacing(3)
 
             // Email input
             HStack(spacing: CCTheme.space2) {
@@ -471,46 +577,6 @@ struct OnboardingView: View {
                 .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
             }
         }
-    }
-
-    private func suggestedUserRow(_ user: User) -> some View {
-        let isSelected = invitedUsers.contains(user.id)
-        return HStack(spacing: CCTheme.space3) {
-            CCAvatar(user: user, size: 44)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(user.name)
-                    .font(.ccBody.bold())
-                    .foregroundStyle(CCTheme.ink)
-                Text(user.email)
-                    .font(.ccFootnote)
-                    .foregroundStyle(CCTheme.slate)
-            }
-
-            Spacer()
-
-            ZStack {
-                SwiftUI.Circle()
-                    .fill(isSelected ? CCTheme.navy : CCTheme.canvas)
-                    .overlay {
-                        SwiftUI.Circle()
-                            .stroke(isSelected ? CCTheme.navy : CCTheme.hairline, lineWidth: 2)
-                    }
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(.white)
-                }
-            }
-            .frame(width: 22, height: 22)
-        }
-        .padding(CCTheme.space3)
-        .background(isSelected ? CCTheme.cream : CCTheme.canvas)
-        .overlay {
-            RoundedRectangle(cornerRadius: CCTheme.radiusMedium)
-                .stroke(isSelected ? CCTheme.navy : CCTheme.hairline, lineWidth: isSelected ? 2 : 1)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
     }
 
     private func addEmail() {
@@ -619,7 +685,7 @@ struct OnboardingView: View {
                 .foregroundStyle(CCTheme.ink)
                 .lineSpacing(2)
 
-            let totalInvites = emailInvites.count + invitedUsers.count
+            let totalInvites = emailInvites.count
             Text("\(circleName) is ready. \(totalInvites > 0 ? "\(totalInvites) \(totalInvites == 1 ? "person" : "people") will receive an invite" : "You can invite members anytime from your hub"). Your first goal is \(goalTitle).")
                 .font(.ccBody)
                 .foregroundStyle(CCTheme.slate)
@@ -697,6 +763,7 @@ struct OnboardingView: View {
         case .signIn: return isSigningIn ? "Signing in..." : "Continue"
         case .circleType: return "Next"
         case .circleName: return "Next"
+        case .circlePrivacy: return "Next"
         case .circleMembers: return "Next"
         case .firstGoal: return "Review"
         case .ready: return "Enter your hub"
@@ -711,6 +778,7 @@ struct OnboardingView: View {
             let hasValidEmail = myEmail.contains("@") && myEmail.contains(".") && myEmail.count > 5
             return hasName && hasValidEmail && !isSigningIn
         case .circleName: return !circleName.trimmingCharacters(in: .whitespaces).isEmpty
+        case .circlePrivacy: return true
         case .circleMembers: return true
         case .firstGoal:
             let hasTitle = !goalTitle.trimmingCharacters(in: .whitespaces).isEmpty
@@ -774,14 +842,6 @@ struct OnboardingView: View {
             type: selectedType,
             iconName: selectedType.icon
         )
-
-        // Add selected pre-existing users as real members
-        for userId in invitedUsers {
-            if let user = state.allUsers.first(where: { $0.id == userId }) {
-                let role: MemberRole = (selectedType == .family && user.name.contains("Diego")) ? .junior : .member
-                state.addMember(user, to: newCircle.id, role: role)
-            }
-        }
 
         // Create the first goal
         if let targetAmount = Double(goalTargetText.replacingOccurrences(of: ",", with: "")), targetAmount > 0 {

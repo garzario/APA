@@ -57,17 +57,25 @@ final class AppStateManager {
     // MARK: - Init
 
     private init() {
-        // Load local seed data as starting point for UI responsiveness and
-        // statements (which are AI-generated and not in the DB yet).
-        let seed = SeedData.generate()
-        self.currentUser = seed.currentUser
-        self.allUsers = seed.allUsers
-        self.circles = seed.circles
-        self.personalGoals = seed.personalGoals
-        self.transactions = seed.transactions
-        self.statements = seed.statements
-        self.selectedStatementId = seed.statements.last?.id
-        self.notifications = seed.notifications
+        // Start empty. Real data loads from the backend after sign-in.
+        // Statements (AI-generated insights) are the only pre-loaded content
+        // so the Insights tab has something to show immediately.
+        self.currentUser = User(
+            id: UUID(),
+            name: "",
+            email: "",
+            avatarIcon: "person.circle.fill",
+            cards: [],
+            transactions: [],
+            joinedDate: Date()
+        )
+        self.allUsers = []
+        self.circles = []
+        self.personalGoals = []
+        self.transactions = []
+        self.statements = SeedData.generateStatements()
+        self.selectedStatementId = self.statements.last?.id
+        self.notifications = []
     }
 
     // MARK: - Auth / sync from backend
@@ -88,16 +96,21 @@ final class AppStateManager {
                 apiUser = try await UserAPI.create(name: name, email: email)
             }
 
-            // Update current user with real DB ID
-            currentUser = User(
+            // Build the user with generated mock cards and transactions
+            var user = User(
                 id: apiUser.id,
                 name: apiUser.name,
                 email: apiUser.email,
                 avatarIcon: apiUser.avatarIcon,
-                cards: currentUser.cards, // keep mock cards for now
-                transactions: currentUser.transactions,
+                cards: [],
+                transactions: [],
                 joinedDate: apiUser.createdAt ?? Date()
             )
+            user.cards = MockCardGenerator.generateCards(for: user)
+            user.transactions = MockCardGenerator.generateTransactions(for: user, cards: user.cards)
+
+            currentUser = user
+            allUsers = [user]
 
             // Load their circles and goals from DB
             await refreshFromBackend()
@@ -106,40 +119,79 @@ final class AppStateManager {
         }
     }
 
-    /// Reload circles and goals for the current user from the backend.
+    /// Reload circles, members, and goals for the current user from the backend.
     func refreshFromBackend() async {
         do {
             let apiCircles = try await CircleAPI.list(forUser: currentUser.id)
             let apiGoals = try await GoalAPI.list(forUser: currentUser.id)
 
-            // Merge backend circles with local ones
-            // Map APICircle to local Circle, keeping members from local if known
             var newCircles: [Circle] = []
+            var userCache: [UUID: User] = [currentUser.id: currentUser]
+
             for api in apiCircles {
-                if let existing = circles.first(where: { $0.id == api.id }) {
-                    newCircles.append(existing)
-                } else {
-                    newCircles.append(Circle(
-                        id: api.id,
-                        name: api.name,
-                        type: CircleType(rawValue: api.type.capitalized) ?? .family,
-                        iconName: api.iconName,
-                        members: [
-                            CircleMember(
-                                id: UUID(),
-                                user: currentUser,
-                                role: .admin,
-                                visibilityLevel: .goalsOnly,
-                                joinedDate: api.createdAt ?? Date()
-                            )
-                        ],
-                        goals: [],
-                        createdAt: api.createdAt ?? Date()
+                // Fetch members for this circle
+                let apiMembers = (try? await CircleAPI.members(circleId: api.id)) ?? []
+
+                var members: [CircleMember] = []
+                for apiMember in apiMembers {
+                    // Build or reuse user
+                    let user: User
+                    if let cached = userCache[apiMember.userId] {
+                        user = cached
+                    } else {
+                        var newUser = User(
+                            id: apiMember.userId,
+                            name: apiMember.name ?? "Unknown",
+                            email: apiMember.email ?? "",
+                            avatarIcon: apiMember.avatarIcon ?? "person.circle.fill",
+                            cards: [],
+                            transactions: [],
+                            joinedDate: Date()
+                        )
+                        newUser.cards = MockCardGenerator.generateCards(for: newUser)
+                        newUser.transactions = MockCardGenerator.generateTransactions(for: newUser, cards: newUser.cards)
+                        userCache[apiMember.userId] = newUser
+                        user = newUser
+                    }
+
+                    members.append(CircleMember(
+                        id: apiMember.id,
+                        user: user,
+                        role: MemberRole(rawValue: apiMember.role.capitalized) ?? .member,
+                        visibilityLevel: VisibilityLevel(rawValue: apiMember.visibility) ?? .goalsOnly,
+                        joinedDate: Date()
                     ))
                 }
+
+                // Ensure current user is always in the member list
+                if !members.contains(where: { $0.user.id == currentUser.id }) {
+                    members.insert(CircleMember(
+                        id: UUID(),
+                        user: currentUser,
+                        role: .admin,
+                        visibilityLevel: .goalsOnly,
+                        joinedDate: api.createdAt ?? Date()
+                    ), at: 0)
+                }
+
+                let circleType = CircleType(rawValue: api.type.capitalized) ?? .family
+
+                newCircles.append(Circle(
+                    id: api.id,
+                    name: api.name,
+                    type: circleType,
+                    iconName: api.iconName,
+                    members: members,
+                    goals: [],
+                    createdAt: api.createdAt ?? Date()
+                ))
             }
 
+            // Update allUsers from cache
+            allUsers = Array(userCache.values)
+
             // Assign goals to their circles from backend
+            var personal: [Goal] = []
             for api in apiGoals {
                 let goal = Goal(
                     id: api.id,
@@ -155,19 +207,16 @@ final class AppStateManager {
                 )
                 if let circleId = api.circleId,
                    let idx = newCircles.firstIndex(where: { $0.id == circleId }) {
-                    if !newCircles[idx].goals.contains(where: { $0.id == goal.id }) {
-                        newCircles[idx].goals.append(goal)
-                    }
-                } else if !personalGoals.contains(where: { $0.id == goal.id }) {
-                    personalGoals.append(goal)
+                    newCircles[idx].goals.append(goal)
+                } else {
+                    personal.append(goal)
                 }
             }
 
-            if !newCircles.isEmpty {
-                circles = newCircles
-            }
+            circles = newCircles
+            personalGoals = personal
         } catch {
-            // Silent fallback to local state so the demo keeps working
+            // Silent fallback — the app remains usable with whatever state is loaded
             print("Refresh from backend failed: \(error.localizedDescription)")
         }
     }

@@ -157,11 +157,16 @@ struct APICircleMember: Codable {
     let userId: UUID
     let role: String
     let visibility: String
+    /// Present when fetched via /circles/{id}/members (joined with users table)
+    let name: String?
+    let email: String?
+    let avatarIcon: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, role, visibility
+        case id, role, visibility, name, email
         case circleId = "circle_id"
         case userId = "user_id"
+        case avatarIcon = "avatar_icon"
     }
 }
 
@@ -317,6 +322,10 @@ enum CircleAPI {
 
     static func addMember(_ payload: APICircleMemberCreate) async throws -> APICircleMember {
         try await APIClient.post("/circles/members", body: payload)
+    }
+
+    static func members(circleId: UUID) async throws -> [APICircleMember] {
+        try await APIClient.get("/circles/\(circleId.uuidString)/members")
     }
 }
 
