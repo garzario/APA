@@ -12,6 +12,7 @@ struct HomeView: View {
                 VStack(spacing: CCTheme.paddingLarge) {
                     heroHeader
                     monthlySpendingCard
+                    quickActions
                     goalsSection
                     recentActivitySection
                 }
@@ -40,7 +41,7 @@ struct HomeView: View {
                                 .foregroundStyle(CCTheme.primaryBlue)
                                 .font(.title3)
                             if state.unreadNotificationCount > 0 {
-                                Circle()
+                                SwiftUI.Circle()
                                     .fill(CCTheme.errorRed)
                                     .frame(width: 8, height: 8)
                                     .offset(x: 3, y: -2)
@@ -138,6 +139,52 @@ struct HomeView: View {
             .shadow(color: CCTheme.primaryBlue.opacity(0.3), radius: 16, y: 6)
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Quick Actions
+
+    private var quickActions: some View {
+        HStack(spacing: 12) {
+            NavigationLink(destination: CardSelectorView()) {
+                quickActionCard(
+                    icon: "creditcard.fill",
+                    title: "Card optimizer",
+                    subtitle: "Best card per purchase",
+                    color: CCTheme.accentBlue
+                )
+            }
+            NavigationLink(destination: CirclesListView()) {
+                quickActionCard(
+                    icon: "person.3.fill",
+                    title: "My circles",
+                    subtitle: "\(state.circles.count) active",
+                    color: CCTheme.successGreen
+                )
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func quickActionCard(icon: String, title: String, subtitle: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(color)
+                .frame(width: 36, height: 36)
+                .background(color.opacity(0.15))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            Text(title)
+                .font(.subheadline.bold())
+                .foregroundStyle(CCTheme.textPrimary)
+            Text(subtitle)
+                .font(.caption)
+                .foregroundStyle(CCTheme.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(CCTheme.paddingMedium)
+        .background(CCTheme.backgroundCard)
+        .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
+        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
     }
 
     // MARK: - Goals Section
