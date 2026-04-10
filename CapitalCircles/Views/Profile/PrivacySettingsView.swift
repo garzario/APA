@@ -41,14 +41,8 @@ struct PrivacySettingsView: View {
             .padding(.bottom, CCTheme.space8)
         }
         .background(CCTheme.canvas)
+        .navigationTitle("Privacy")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Text("Privacy")
-                    .font(.ccHeadline)
-                    .foregroundStyle(CCTheme.ink)
-            }
-        }
     }
 
     private var header: some View {
@@ -163,14 +157,8 @@ struct NotificationSettingsView: View {
             .padding(.bottom, CCTheme.space8)
         }
         .background(CCTheme.canvas)
+        .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Text("Notifications")
-                    .font(.ccHeadline)
-                    .foregroundStyle(CCTheme.ink)
-            }
-        }
     }
 
     private var header: some View {
@@ -255,14 +243,8 @@ struct AccessibilitySettingsView: View {
             .padding(.bottom, CCTheme.space8)
         }
         .background(CCTheme.canvas)
+        .navigationTitle("Accessibility")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Text("Accessibility")
-                    .font(.ccHeadline)
-                    .foregroundStyle(CCTheme.ink)
-            }
-        }
     }
 
     private func toggleRow(_ title: String, isOn: Binding<Bool>) -> some View {
@@ -387,14 +369,8 @@ struct CardDetailView: View {
             .padding(.bottom, CCTheme.space8)
         }
         .background(CCTheme.canvas)
+        .navigationTitle(card.name)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Text(card.name)
-                    .font(.ccHeadline)
-                    .foregroundStyle(CCTheme.ink)
-            }
-        }
     }
 
     private var header: some View {
@@ -546,14 +522,8 @@ struct HelpView: View {
             .padding(.bottom, CCTheme.space8)
         }
         .background(CCTheme.canvas)
+        .navigationTitle("Help")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Text("Help")
-                    .font(.ccHeadline)
-                    .foregroundStyle(CCTheme.ink)
-            }
-        }
     }
 
     private func faq(title: String, body: String) -> some View {
@@ -614,13 +584,7 @@ struct PolicyView: View {
             .padding(.bottom, CCTheme.space8)
         }
         .background(CCTheme.canvas)
+        .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Text(title)
-                    .font(.ccHeadline)
-                    .foregroundStyle(CCTheme.ink)
-            }
-        }
     }
 }

@@ -39,7 +39,7 @@ struct GoalsListView: View {
         .background(CCTheme.canvas)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
+            ToolbarItem(placement: .principal) {
                 Text("Goals")
                     .font(.ccHeadline)
                     .foregroundStyle(CCTheme.ink)

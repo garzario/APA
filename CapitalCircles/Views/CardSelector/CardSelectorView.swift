@@ -35,7 +35,7 @@ struct CardSelectorView: View {
         .background(CCTheme.canvas)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
+            ToolbarItem(placement: .principal) {
                 Text("Card optimizer")
                     .font(.ccHeadline)
                     .foregroundStyle(CCTheme.ink)

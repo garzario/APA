@@ -20,7 +20,7 @@ struct CirclesListView: View {
         .background(CCTheme.canvas)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
+            ToolbarItem(placement: .principal) {
                 Text("Circles")
                     .font(.ccHeadline)
                     .foregroundStyle(CCTheme.ink)

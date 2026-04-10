@@ -21,7 +21,7 @@ struct ProfileView: View {
         .background(CCTheme.canvas)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
+            ToolbarItem(placement: .principal) {
                 Text("Profile")
                     .font(.ccHeadline)
                     .foregroundStyle(CCTheme.ink)

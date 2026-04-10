@@ -31,7 +31,7 @@ struct StatementView: View {
         .background(CCTheme.canvas)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
+            ToolbarItem(placement: .principal) {
                 Text("Insights")
                     .font(.ccHeadline)
                     .foregroundStyle(CCTheme.ink)
