@@ -15,21 +15,30 @@ struct GoalDetailView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: CCTheme.paddingLarge) {
-                    progressHeader
-                    detailsCard
+                VStack(alignment: .leading, spacing: CCTheme.space7) {
+                    heroSection
+                    detailsSection
                     contributionsSection
-                    actionsSection
+                    dangerZone
                 }
-                .padding(.horizontal, CCTheme.paddingMedium)
-                .padding(.bottom, CCTheme.paddingLarge)
+                .padding(.vertical, CCTheme.space5)
+                .padding(.bottom, CCTheme.space9)
             }
-            .background(CCTheme.backgroundPrimary)
+            .background(CCTheme.canvas)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(CCTheme.ink)
+                    }
                 }
+            }
+            .overlay(alignment: .bottom) {
+                contributeButton
             }
             .sheet(isPresented: $showContribute) {
                 ContributeSheet(goal: currentGoal)
@@ -41,157 +50,191 @@ struct GoalDetailView: View {
                     dismiss()
                 }
             } message: {
-                Text("This will remove the goal and all its contributions.")
+                Text("This will remove the goal and all of its contributions.")
             }
         }
     }
 
-    private var progressHeader: some View {
-        VStack(spacing: 16) {
-            Image(systemName: currentGoal.iconName)
-                .font(.system(size: 50))
-                .foregroundStyle(CCTheme.primaryBlue)
-                .frame(width: 100, height: 100)
-                .background(CCTheme.lightBlue)
-                .clipShape(SwiftUI.Circle())
+    // MARK: - Hero
+
+    private var heroSection: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space4) {
+            Text(goalSubtitle.uppercased())
+                .font(.ccCaption)
+                .foregroundStyle(CCTheme.slate)
+                .tracking(0.5)
 
             Text(currentGoal.title)
-                .font(.title.bold())
-                .foregroundStyle(CCTheme.textPrimary)
+                .font(.ccLargeTitle)
+                .foregroundStyle(CCTheme.ink)
 
-            VStack(spacing: 8) {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text("$\(Int(currentGoal.currentAmount).formatted())")
-                        .font(.system(size: 36, weight: .bold, design: .rounded))
-                        .foregroundStyle(CCTheme.primaryBlue)
-                    Text("of $\(Int(currentGoal.targetAmount).formatted())")
-                        .font(.subheadline)
-                        .foregroundStyle(CCTheme.textSecondary)
+            HStack(alignment: .firstTextBaseline, spacing: CCTheme.space2) {
+                Text("$\(Int(currentGoal.currentAmount).formatted())")
+                    .font(.ccAmountLarge)
+                    .foregroundStyle(CCTheme.ink)
+                    .monospacedDigit()
+                Text("of $\(Int(currentGoal.targetAmount).formatted())")
+                    .font(.ccBody)
+                    .foregroundStyle(CCTheme.slate)
+                    .monospacedDigit()
+            }
+
+            // Progress bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(CCTheme.hairline)
+                        .frame(height: 6)
+                    Capsule()
+                        .fill(CCTheme.navy)
+                        .frame(width: geo.size.width * currentGoal.progressPercentage, height: 6)
                 }
+            }
+            .frame(height: 6)
 
-                ProgressView(value: currentGoal.progressPercentage)
-                    .tint(CCTheme.primaryBlue)
-                    .scaleEffect(x: 1, y: 2, anchor: .center)
-                    .padding(.horizontal, 30)
-
+            HStack(spacing: CCTheme.space4) {
                 Text("\(Int(currentGoal.progressPercentage * 100))% complete")
-                    .font(.caption)
-                    .foregroundStyle(CCTheme.textSecondary)
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+                Spacer()
+                Text("$\(Int(currentGoal.remainingAmount).formatted()) to go")
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+                    .monospacedDigit()
             }
         }
-        .padding(.top, CCTheme.paddingLarge)
+        .padding(.horizontal, CCTheme.space5)
     }
 
-    private var detailsCard: some View {
-        VStack(spacing: 0) {
-            row(label: "Remaining", value: "$\(Int(currentGoal.remainingAmount).formatted())", icon: "arrow.right.circle.fill")
-            Divider().padding(.leading, 56)
-            if let deadline = currentGoal.deadline {
-                row(label: "Deadline", value: deadline.formatted(date: .long, time: .omitted), icon: "calendar")
-                Divider().padding(.leading, 56)
+    private var goalSubtitle: String {
+        if currentGoal.isShared {
+            if let circle = state.circles.first(where: { $0.id == currentGoal.circleId }) {
+                return "\(circle.name) • Shared"
             }
-            row(label: "Type", value: currentGoal.isShared ? "Shared goal" : "Personal goal", icon: currentGoal.isShared ? "person.2.fill" : "person.fill")
-            if currentGoal.isShared, let circle = state.circles.first(where: { $0.id == currentGoal.circleId }) {
-                Divider().padding(.leading, 56)
-                row(label: "Circle", value: circle.name, icon: circle.iconName)
+            return "Shared goal"
+        }
+        return "Personal goal"
+    }
+
+    // MARK: - Details
+
+    private var detailsSection: some View {
+        CCSection("Details") {
+            VStack(spacing: 0) {
+                Divider()
+                if let deadline = currentGoal.deadline {
+                    detailRow(label: "Deadline", value: deadline.formatted(date: .long, time: .omitted))
+                    Divider().padding(.leading, CCTheme.space5)
+                }
+                detailRow(label: "Remaining", value: "$\(Int(currentGoal.remainingAmount).formatted())")
+                Divider().padding(.leading, CCTheme.space5)
+                detailRow(label: "Type", value: currentGoal.isShared ? "Shared" : "Personal")
+                if currentGoal.isShared, let circle = state.circles.first(where: { $0.id == currentGoal.circleId }) {
+                    Divider().padding(.leading, CCTheme.space5)
+                    detailRow(label: "Circle", value: circle.name)
+                }
+                Divider()
             }
         }
-        .padding(.horizontal, CCTheme.paddingMedium)
-        .background(CCTheme.backgroundCard)
-        .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
-        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
     }
+
+    private func detailRow(label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.ccBody)
+                .foregroundStyle(CCTheme.slate)
+            Spacer()
+            Text(value)
+                .font(.ccBody)
+                .foregroundStyle(CCTheme.ink)
+                .monospacedDigit()
+        }
+        .padding(.horizontal, CCTheme.space5)
+        .padding(.vertical, CCTheme.space4)
+    }
+
+    // MARK: - Contributions
 
     private var contributionsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Contributions")
-                .font(.headline)
-                .foregroundStyle(CCTheme.textPrimary)
-
+        CCSection("Contributions") {
             if currentGoal.contributions.isEmpty {
-                Text("No contributions yet. Tap contribute to start.")
-                    .font(.caption)
-                    .foregroundStyle(CCTheme.textSecondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 20)
-                    .background(CCTheme.backgroundCard)
-                    .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
+                InlineEmptyState(
+                    icon: "plus.circle",
+                    title: "No contributions yet",
+                    subtitle: "Tap \"Contribute\" below to add the first one"
+                )
+                .padding(.horizontal, CCTheme.space5)
             } else {
                 VStack(spacing: 0) {
-                    ForEach(currentGoal.contributions.sorted(by: { $0.date > $1.date })) { contribution in
-                        HStack(spacing: 12) {
-                            Image(systemName: "arrow.up.circle.fill")
-                                .foregroundStyle(CCTheme.successGreen)
-                                .font(.title3)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(contribution.userName)
-                                    .font(.subheadline.bold())
-                                Text(contribution.date, style: .date)
-                                    .font(.caption2)
-                                    .foregroundStyle(CCTheme.textSecondary)
-                            }
-                            Spacer()
-                            Text("+$\(Int(contribution.amount).formatted())")
-                                .font(.subheadline.bold())
-                                .foregroundStyle(CCTheme.successGreen)
-                        }
-                        .padding(.vertical, 10)
-                        if contribution.id != currentGoal.contributions.last?.id {
-                            Divider()
+                    Divider()
+                    ForEach(Array(currentGoal.contributions.sorted(by: { $0.date > $1.date }).enumerated()), id: \.element.id) { index, contribution in
+                        contributionRow(contribution)
+                        if index < currentGoal.contributions.count - 1 {
+                            Divider().padding(.leading, CCTheme.space5)
                         }
                     }
+                    Divider()
                 }
-                .padding(.horizontal, CCTheme.paddingMedium)
-                .background(CCTheme.backgroundCard)
-                .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
-                .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
             }
         }
     }
 
-    private var actionsSection: some View {
-        VStack(spacing: 10) {
+    private func contributionRow(_ contribution: Contribution) -> some View {
+        HStack(spacing: CCTheme.space4) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(contribution.userName)
+                    .font(.ccBody)
+                    .foregroundStyle(CCTheme.ink)
+                Text(contribution.date, style: .date)
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+            }
+            Spacer()
+            Text("+$\(Int(contribution.amount).formatted())")
+                .font(.ccBody)
+                .foregroundStyle(CCTheme.ink)
+                .monospacedDigit()
+        }
+        .padding(.horizontal, CCTheme.space5)
+        .padding(.vertical, CCTheme.space4)
+    }
+
+    // MARK: - Danger Zone
+
+    private var dangerZone: some View {
+        Button {
+            showDeleteAlert = true
+        } label: {
+            Text("Delete goal")
+                .font(.ccSubhead)
+                .foregroundStyle(CCTheme.red)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, CCTheme.space4)
+        }
+        .padding(.horizontal, CCTheme.space5)
+    }
+
+    // MARK: - Contribute Button
+
+    private var contributeButton: some View {
+        VStack(spacing: 0) {
+            LinearGradient(
+                colors: [CCTheme.canvas.opacity(0), CCTheme.canvas],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 20)
+
             Button {
                 showContribute = true
             } label: {
-                Label("Add contribution", systemImage: "plus.circle.fill")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(CCTheme.primaryBlue)
-                    .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
+                Text("Contribute")
             }
-
-            Button {
-                showDeleteAlert = true
-            } label: {
-                Label("Delete goal", systemImage: "trash.fill")
-                    .font(.subheadline)
-                    .foregroundStyle(CCTheme.errorRed)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-            }
+            .buttonStyle(CCPrimaryButtonStyle())
+            .padding(.horizontal, CCTheme.space5)
+            .padding(.bottom, CCTheme.space5)
+            .background(CCTheme.canvas)
         }
-    }
-
-    private func row(label: String, value: String, icon: String) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: icon)
-                .font(.subheadline)
-                .foregroundStyle(CCTheme.primaryBlue)
-                .frame(width: 32, height: 32)
-                .background(CCTheme.lightBlue)
-                .clipShape(SwiftUI.Circle())
-            Text(label)
-                .font(.subheadline)
-                .foregroundStyle(CCTheme.textSecondary)
-            Spacer()
-            Text(value)
-                .font(.subheadline.bold())
-                .foregroundStyle(CCTheme.textPrimary)
-        }
-        .padding(.vertical, 14)
     }
 }
 
@@ -211,39 +254,57 @@ struct ContributeSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: CCTheme.paddingLarge) {
-                VStack(spacing: 8) {
-                    Image(systemName: goal.iconName)
-                        .font(.system(size: 44))
-                        .foregroundStyle(CCTheme.primaryBlue)
+            VStack(alignment: .leading, spacing: CCTheme.space7) {
+                VStack(alignment: .leading, spacing: CCTheme.space2) {
+                    Text("CONTRIBUTE TO")
+                        .font(.ccCaption)
+                        .foregroundStyle(CCTheme.slate)
+                        .tracking(0.5)
                     Text(goal.title)
-                        .font(.title3.bold())
+                        .font(.ccLargeTitle)
+                        .foregroundStyle(CCTheme.ink)
                 }
-                .padding(.top, CCTheme.paddingLarge)
+                .padding(.horizontal, CCTheme.space5)
+                .padding(.top, CCTheme.space5)
 
-                VStack(spacing: 12) {
-                    Text("Amount")
-                        .font(.caption)
-                        .foregroundStyle(CCTheme.textSecondary)
-                    HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: CCTheme.space3) {
+                    Text("AMOUNT")
+                        .font(.ccCaption)
+                        .foregroundStyle(CCTheme.slate)
+                        .tracking(0.5)
+
+                    HStack(alignment: .firstTextBaseline, spacing: CCTheme.space1) {
                         Text("$")
-                            .font(.system(size: 40, weight: .bold, design: .rounded))
-                            .foregroundStyle(CCTheme.textPrimary)
-                        TextField("0", text: $amountText)
                             .font(.system(size: 48, weight: .bold, design: .rounded))
+                            .foregroundStyle(CCTheme.slate)
+                        TextField("0", text: $amountText)
+                            .font(.system(size: 60, weight: .bold, design: .rounded))
                             .keyboardType(.numberPad)
                             .focused($isAmountFocused)
-                            .frame(width: 180)
-                            .multilineTextAlignment(.leading)
+                            .foregroundStyle(CCTheme.ink)
                     }
-                }
-                .padding(.vertical, CCTheme.paddingLarge)
-                .frame(maxWidth: .infinity)
-                .background(CCTheme.backgroundCard)
-                .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusLarge))
-                .padding(.horizontal)
 
-                quickAmounts
+                    Divider()
+
+                    HStack(spacing: CCTheme.space2) {
+                        ForEach([100, 500, 1000, 5000], id: \.self) { quickAmount in
+                            Button {
+                                amountText = String(quickAmount)
+                            } label: {
+                                Text("$\(quickAmount)")
+                                    .font(.ccSubhead)
+                                    .foregroundStyle(CCTheme.ink)
+                                    .padding(.horizontal, CCTheme.space4)
+                                    .padding(.vertical, CCTheme.space2)
+                                    .background(CCTheme.fog)
+                                    .clipShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.top, CCTheme.space3)
+                }
+                .padding(.horizontal, CCTheme.space5)
 
                 Spacer()
 
@@ -251,45 +312,27 @@ struct ContributeSheet: View {
                     state.contribute(amount, to: goal.id)
                     dismiss()
                 } label: {
-                    Text("Contribute $\(Int(amount).formatted())")
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(amount > 0 ? CCTheme.primaryBlue : CCTheme.primaryBlue.opacity(0.4))
-                        .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
+                    Text(amount > 0 ? "Contribute $\(Int(amount).formatted())" : "Enter an amount")
                 }
+                .buttonStyle(CCPrimaryButtonStyle())
                 .disabled(amount <= 0)
-                .padding(.horizontal, CCTheme.paddingMedium)
-                .padding(.bottom, CCTheme.paddingLarge)
+                .padding(.horizontal, CCTheme.space5)
+                .padding(.bottom, CCTheme.space5)
             }
-            .background(CCTheme.backgroundPrimary)
-            .navigationTitle("Contribute")
+            .background(CCTheme.canvas)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(CCTheme.ink)
+                    }
                 }
             }
             .onAppear { isAmountFocused = true }
-        }
-    }
-
-    private var quickAmounts: some View {
-        HStack(spacing: 10) {
-            ForEach([100, 500, 1000, 5000], id: \.self) { amount in
-                Button {
-                    amountText = String(amount)
-                } label: {
-                    Text("$\(amount)")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(CCTheme.primaryBlue)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(CCTheme.lightBlue)
-                        .clipShape(Capsule())
-                }
-            }
         }
     }
 }

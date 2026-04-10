@@ -7,7 +7,7 @@ struct ContentView: View {
         TabView(selection: $selectedTab) {
             HomeView()
                 .tabItem {
-                    Label("Home", systemImage: "house.fill")
+                    Label("Family", systemImage: "house")
                 }
                 .tag(0)
 
@@ -19,27 +19,31 @@ struct ContentView: View {
             }
             .tag(1)
 
-            CirclesListView()
-                .tabItem {
-                    Label("Circles", systemImage: "person.3.fill")
-                }
-                .tag(2)
+            NavigationStack {
+                CirclesListView()
+            }
+            .tabItem {
+                Label("Circles", systemImage: "person.2")
+            }
+            .tag(2)
 
             NavigationStack {
                 StatementView()
             }
             .tabItem {
-                Label("Insights", systemImage: "chart.bar.fill")
+                Label("Insights", systemImage: "chart.bar")
             }
             .tag(3)
 
-            ProfileView()
-                .tabItem {
-                    Label("Profile", systemImage: "person.circle.fill")
-                }
-                .tag(4)
+            NavigationStack {
+                ProfileView()
+            }
+            .tabItem {
+                Label("Profile", systemImage: "person")
+            }
+            .tag(4)
         }
-        .tint(CCTheme.primaryBlue)
+        .tint(CCTheme.navy)
     }
 }
 

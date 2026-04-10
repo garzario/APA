@@ -15,258 +15,206 @@ struct CardSelectorView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: CCTheme.paddingLarge) {
-                    categoryPicker
-                    if let bestCard {
-                        recommendationCard(bestCard)
-                    }
-                    cardsComparison
-                    rewardsHistoryCard
+        ScrollView {
+            VStack(alignment: .leading, spacing: CCTheme.space8) {
+                header
+
+                categoryPicker
+
+                if let bestCard {
+                    recommendedCard(bestCard)
                 }
-                .padding(.horizontal, CCTheme.paddingMedium)
-                .padding(.bottom, CCTheme.paddingLarge)
+
+                allCardsSection
+
+                rewardsSection
             }
-            .background(CCTheme.backgroundPrimary)
-            .navigationTitle("Card Optimizer")
+            .padding(.vertical, CCTheme.space5)
+            .padding(.bottom, CCTheme.space8)
+        }
+        .background(CCTheme.canvas)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Text("Card optimizer")
+                    .font(.ccHeadline)
+                    .foregroundStyle(CCTheme.ink)
+            }
         }
     }
 
-    // MARK: - Category Picker
+    private var header: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space2) {
+            Text("MAXIMIZE REWARDS")
+                .font(.ccCaption)
+                .foregroundStyle(CCTheme.slate)
+                .tracking(0.5)
+            Text("Pick the right card\nfor every purchase")
+                .font(.ccLargeTitle)
+                .foregroundStyle(CCTheme.ink)
+        }
+        .padding(.horizontal, CCTheme.space5)
+    }
 
     private var categoryPicker: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("What are you buying?")
-                .font(.headline)
-                .foregroundStyle(CCTheme.textPrimary)
+        VStack(alignment: .leading, spacing: CCTheme.space3) {
+            Text("WHAT ARE YOU BUYING?")
+                .font(.ccCaption)
+                .foregroundStyle(CCTheme.slate)
+                .tracking(0.5)
+                .padding(.horizontal, CCTheme.space5)
 
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
+                HStack(spacing: CCTheme.space2) {
                     ForEach(SpendingCategory.allCases, id: \.self) { category in
                         Button {
-                            withAnimation(.spring(response: 0.3)) {
+                            withAnimation(.easeInOut(duration: 0.2)) {
                                 selectedCategory = category
                             }
                         } label: {
-                            HStack(spacing: 6) {
+                            HStack(spacing: CCTheme.space2) {
                                 Image(systemName: category.icon)
-                                    .font(.caption)
+                                    .font(.system(size: 13, weight: .medium))
                                 Text(category.rawValue)
-                                    .font(.caption.bold())
+                                    .font(.ccSubhead.weight(selectedCategory == category ? .semibold : .regular))
                             }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-                            .background(selectedCategory == category ? CCTheme.primaryBlue : CCTheme.backgroundCard)
-                            .foregroundStyle(selectedCategory == category ? .white : CCTheme.textPrimary)
+                            .foregroundStyle(selectedCategory == category ? .white : CCTheme.ink)
+                            .padding(.horizontal, CCTheme.space4)
+                            .padding(.vertical, CCTheme.space3)
+                            .background(selectedCategory == category ? CCTheme.navy : CCTheme.fog)
                             .clipShape(Capsule())
-                            .shadow(color: .black.opacity(0.04), radius: 4, y: 1)
                         }
+                        .buttonStyle(.plain)
                     }
                 }
-                .padding(.vertical, 4)
+                .padding(.horizontal, CCTheme.space5)
             }
         }
     }
 
-    // MARK: - Recommendation Card
-
-    private func recommendationCard(_ card: Card) -> some View {
-        VStack(spacing: 18) {
-            HStack(spacing: 8) {
-                Image(systemName: "sparkles")
-                    .foregroundStyle(.yellow)
-                Text("Best for \(selectedCategory.rawValue.lowercased())")
-                    .font(.caption.bold())
-                    .foregroundStyle(CCTheme.textSecondary)
-            }
-
-            Text("Use your \(card.name)")
-                .font(.title2.bold())
-                .foregroundStyle(CCTheme.textPrimary)
-
-            Text("\(String(format: "%.1f", card.cardType.rewardRate(for: selectedCategory)))x rewards")
-                .font(.system(size: 32, weight: .bold, design: .rounded))
-                .foregroundStyle(CCTheme.primaryBlue)
-
-            // Card visual
-            CapitalOneCardView(card: card)
-                .frame(height: 180)
-                .padding(.horizontal, 20)
-        }
-        .padding(CCTheme.paddingLarge)
-        .frame(maxWidth: .infinity)
-        .background(CCTheme.backgroundCard)
-        .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusLarge))
-        .shadow(color: .black.opacity(0.06), radius: 12, y: 4)
-    }
-
-    // MARK: - Cards Comparison
-
-    private var cardsComparison: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("All your cards")
-                .font(.headline)
-                .foregroundStyle(CCTheme.textPrimary)
-
-            ForEach(cards) { card in
-                let rate = card.cardType.rewardRate(for: selectedCategory)
-                let isBest = card.id == bestCard?.id
-
-                HStack(spacing: 14) {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(card.cardType.color)
-                        .frame(width: 48, height: 32)
-                        .overlay {
-                            Text("C1")
-                                .font(.caption2.bold())
-                                .foregroundStyle(.white)
-                        }
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(card.name)
-                            .font(.subheadline.bold())
-                            .foregroundStyle(CCTheme.textPrimary)
-                        Text(card.cardType.rewardsDescription)
-                            .font(.caption2)
-                            .foregroundStyle(CCTheme.textSecondary)
-                            .lineLimit(1)
-                    }
-
-                    Spacer()
-
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("\(String(format: "%.1f", rate))x")
-                            .font(.title3.bold())
-                            .foregroundStyle(isBest ? CCTheme.successGreen : CCTheme.textSecondary)
-                        if isBest {
-                            Text("BEST")
-                                .font(.caption2.bold())
-                                .foregroundStyle(CCTheme.successGreen)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(CCTheme.successGreen.opacity(0.15))
-                                .clipShape(Capsule())
-                        }
-                    }
+    private func recommendedCard(_ card: Card) -> some View {
+        VStack(alignment: .leading, spacing: CCTheme.space5) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: CCTheme.space1) {
+                    Text("RECOMMENDED")
+                        .font(.ccCaption)
+                        .foregroundStyle(.white.opacity(0.7))
+                        .tracking(0.5)
+                    Text("Use your \(card.name)")
+                        .font(.ccTitle)
+                        .foregroundStyle(.white)
                 }
-                .padding(CCTheme.paddingMedium)
-                .background(isBest ? CCTheme.lightBlue.opacity(0.5) : CCTheme.backgroundCard)
-                .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
-                .overlay {
-                    if isBest {
-                        RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium)
-                            .stroke(CCTheme.primaryBlue, lineWidth: 2)
-                    }
-                }
-                .shadow(color: .black.opacity(isBest ? 0.08 : 0.03), radius: 8, y: 2)
-            }
-        }
-    }
-
-    // MARK: - Rewards History
-
-    private var rewardsHistoryCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Your rewards")
-                .font(.headline)
-                .foregroundStyle(CCTheme.textPrimary)
-
-            VStack(spacing: 0) {
-                ForEach(cards) { card in
-                    HStack(spacing: 14) {
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(card.cardType.color)
-                            .frame(width: 36, height: 24)
-                            .overlay {
-                                Text("C1")
-                                    .font(.caption2.bold())
-                                    .foregroundStyle(.white)
-                            }
-                        Text(card.name)
-                            .font(.subheadline.bold())
-                        Spacer()
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text("\(Int(card.rewardsBalance).formatted())")
-                                .font(.headline)
-                                .foregroundStyle(CCTheme.primaryBlue)
-                            Text(card.cardType == .quicksilver ? "cash back" : "miles")
-                                .font(.caption2)
-                                .foregroundStyle(CCTheme.textSecondary)
-                        }
-                    }
-                    .padding(.vertical, 12)
-                    if card.id != cards.last?.id {
-                        Divider()
-                    }
-                }
-            }
-            .padding(.horizontal, CCTheme.paddingMedium)
-            .background(CCTheme.backgroundCard)
-            .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
-            .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
-        }
-    }
-}
-
-// MARK: - Capital One Card Visual
-
-struct CapitalOneCardView: View {
-    let card: Card
-
-    var body: some View {
-        ZStack(alignment: .topLeading) {
-            LinearGradient(
-                colors: [card.cardType.color, card.cardType.color.opacity(0.7)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-
-            VStack(alignment: .leading) {
-                HStack {
-                    Text("CAPITAL")
-                        .font(.caption2.bold())
-                    Text("ONE")
-                        .font(.caption2.bold())
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 1)
-                        .background(.white.opacity(0.2))
-                    Spacer()
-                    Image(systemName: "wave.3.right")
-                        .font(.caption)
-                }
-
                 Spacer()
-
-                Text("\(String(card.name.prefix(8)).uppercased())")
-                    .font(.caption.bold())
-                    .opacity(0.7)
-
-                HStack(spacing: 8) {
-                    Text("****")
-                    Text("****")
-                    Text("****")
-                    Text(card.lastFourDigits)
-                }
-                .font(.system(.subheadline, design: .monospaced).bold())
-                .padding(.top, 4)
-
-                HStack {
-                    Text(card.name)
-                        .font(.headline.bold())
-                    Spacer()
-                    Image(systemName: "visa.logo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 16)
-                        .opacity(0.9)
-                }
-                .padding(.top, 2)
             }
-            .foregroundStyle(.white)
-            .padding(18)
+
+            HStack(alignment: .firstTextBaseline, spacing: CCTheme.space2) {
+                Text("\(String(format: "%.1f", card.cardType.rewardRate(for: selectedCategory)))x")
+                    .font(.system(size: 56, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                Text("on \(selectedCategory.rawValue.lowercased())")
+                    .font(.ccBody)
+                    .foregroundStyle(.white.opacity(0.85))
+            }
+
+            Divider().background(.white.opacity(0.2))
+
+            Text(card.cardType.rewardsDescription)
+                .font(.ccFootnote)
+                .foregroundStyle(.white.opacity(0.85))
         }
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
+        .padding(CCTheme.space6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(CCTheme.navy)
+        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusLarge))
+        .padding(.horizontal, CCTheme.space5)
+    }
+
+    private var allCardsSection: some View {
+        CCSection("All cards") {
+            VStack(spacing: 0) {
+                Divider()
+                ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
+                    cardRow(card)
+                    if index < cards.count - 1 {
+                        Divider().padding(.leading, CCTheme.space5)
+                    }
+                }
+                Divider()
+            }
+        }
+    }
+
+    private func cardRow(_ card: Card) -> some View {
+        let rate = card.cardType.rewardRate(for: selectedCategory)
+        let isBest = card.id == bestCard?.id
+
+        return HStack(spacing: CCTheme.space4) {
+            Image(systemName: "creditcard")
+                .font(.system(size: 14, weight: .regular))
+                .foregroundStyle(CCTheme.navy)
+                .frame(width: 36, height: 36)
+                .background(CCTheme.fog)
+                .clipShape(SwiftUI.Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: CCTheme.space2) {
+                    Text(card.name)
+                        .font(.ccBody)
+                        .foregroundStyle(CCTheme.ink)
+                    if isBest {
+                        Text("BEST")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(.white)
+                            .tracking(0.5)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(CCTheme.positive)
+                            .clipShape(Capsule())
+                    }
+                }
+                Text("•••• \(card.lastFourDigits)")
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+                    .monospacedDigit()
+            }
+
+            Spacer()
+
+            Text("\(String(format: "%.1f", rate))x")
+                .font(.ccHeadline)
+                .foregroundStyle(isBest ? CCTheme.positive : CCTheme.slate)
+                .monospacedDigit()
+        }
+        .padding(.horizontal, CCTheme.space5)
+        .padding(.vertical, CCTheme.space4)
+    }
+
+    private var rewardsSection: some View {
+        CCSection("Your rewards") {
+            VStack(spacing: 0) {
+                Divider()
+                ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
+                    HStack {
+                        Text(card.name)
+                            .font(.ccBody)
+                            .foregroundStyle(CCTheme.ink)
+                        Spacer()
+                        Text("\(Int(card.rewardsBalance).formatted())")
+                            .font(.ccBody)
+                            .foregroundStyle(CCTheme.ink)
+                            .monospacedDigit()
+                        Text(card.cardType == .quicksilver ? "cash" : "miles")
+                            .font(.ccFootnote)
+                            .foregroundStyle(CCTheme.slate)
+                    }
+                    .padding(.horizontal, CCTheme.space5)
+                    .padding(.vertical, CCTheme.space4)
+                    if index < cards.count - 1 {
+                        Divider().padding(.leading, CCTheme.space5)
+                    }
+                }
+                Divider()
+            }
+        }
     }
 }

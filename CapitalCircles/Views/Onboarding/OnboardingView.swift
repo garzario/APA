@@ -6,34 +6,29 @@ struct OnboardingView: View {
 
     private let pages: [OnboardingPage] = [
         OnboardingPage(
-            icon: "circle.grid.3x3.circle.fill",
-            title: "Welcome to Capital Circles",
-            description: "A new way to reach your financial goals. Together, privately, intelligently.",
-            color: CCTheme.primaryBlue
+            eyebrow: "Welcome",
+            title: "Your family's\nfinancial home",
+            body: "Capital Circles is a new way to reach your financial goals. Together, privately, and powered by Capital One."
         ),
         OnboardingPage(
-            icon: "person.3.fill",
-            title: "Better together",
-            description: "Create circles with family, friends, and roommates to support each other without combining finances.",
-            color: CCTheme.accentBlue
+            eyebrow: "Circles",
+            title: "Better together,\nstill yours alone",
+            body: "Create circles with family, friends, and roommates to support each other without combining finances."
         ),
         OnboardingPage(
-            icon: "lock.shield.fill",
-            title: "Privacy first",
-            description: "Your finances stay private. You choose what to share, with whom, and how much.",
-            color: CCTheme.successGreen
+            eyebrow: "Privacy",
+            title: "Your money\nstays your money",
+            body: "You choose what to share, with whom, and how much. Nothing is visible unless you opt in."
         ),
         OnboardingPage(
-            icon: "sparkles",
-            title: "Smart insights",
-            description: "AI-powered monthly summaries with actionable tips to reach your goals faster.",
-            color: CCTheme.warningOrange
+            eyebrow: "Insights",
+            title: "Smarter spending,\nwithout the work",
+            body: "Monthly AI summaries of your spending with honest, actionable tips to reach your goals faster."
         ),
         OnboardingPage(
-            icon: "creditcard.fill",
-            title: "Capital One native",
-            description: "Always know which of your Capital One cards earns the best rewards for every purchase.",
-            color: CCTheme.primaryBlue
+            eyebrow: "Cards",
+            title: "Every purchase,\noptimized",
+            body: "Always know which Capital One card earns the best rewards for what you are buying."
         )
     ]
 
@@ -41,74 +36,75 @@ struct OnboardingView: View {
         VStack(spacing: 0) {
             TabView(selection: $currentPage) {
                 ForEach(Array(pages.enumerated()), id: \.offset) { index, page in
-                    VStack(spacing: 28) {
-                        Spacer()
-
-                        Image(systemName: page.icon)
-                            .font(.system(size: 80))
-                            .foregroundStyle(.white)
-                            .frame(width: 140, height: 140)
-                            .background(
-                                LinearGradient(
-                                    colors: [page.color, page.color.opacity(0.7)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 32))
-                            .shadow(color: page.color.opacity(0.4), radius: 20, y: 10)
-
-                        VStack(spacing: 14) {
-                            Text(page.title)
-                                .font(.largeTitle.bold())
-                                .foregroundStyle(CCTheme.textPrimary)
-                                .multilineTextAlignment(.center)
-
-                            Text(page.description)
-                                .font(.body)
-                                .foregroundStyle(CCTheme.textSecondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 32)
-                        }
-
-                        Spacer()
-                        Spacer()
-                    }
-                    .tag(index)
+                    pageView(page)
+                        .tag(index)
                 }
             }
-            .tabViewStyle(.page(indexDisplayMode: .always))
-            .indexViewStyle(.page(backgroundDisplayMode: .always))
+            .tabViewStyle(.page(indexDisplayMode: .never))
 
-            VStack(spacing: 14) {
+            VStack(spacing: CCTheme.space4) {
+                HStack(spacing: 6) {
+                    ForEach(0..<pages.count, id: \.self) { index in
+                        Capsule()
+                            .fill(currentPage == index ? CCTheme.navy : CCTheme.hairline)
+                            .frame(width: currentPage == index ? 24 : 6, height: 6)
+                            .animation(.easeInOut(duration: 0.25), value: currentPage)
+                    }
+                }
+
                 Button {
                     if currentPage < pages.count - 1 {
-                        withAnimation {
-                            currentPage += 1
-                        }
+                        withAnimation { currentPage += 1 }
                     } else {
                         complete()
                     }
                 } label: {
                     Text(currentPage < pages.count - 1 ? "Continue" : "Get started")
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(CCTheme.primaryBlue)
-                        .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
                 }
+                .buttonStyle(CCPrimaryButtonStyle())
 
                 if currentPage < pages.count - 1 {
-                    Button("Skip intro") { complete() }
-                        .font(.subheadline)
-                        .foregroundStyle(CCTheme.textSecondary)
+                    Button { complete() } label: {
+                        Text("Skip")
+                            .font(.ccBody)
+                            .foregroundStyle(CCTheme.slate)
+                    }
+                } else {
+                    Color.clear.frame(height: 22)
                 }
             }
-            .padding(.horizontal, CCTheme.paddingLarge)
-            .padding(.bottom, 40)
+            .padding(.horizontal, CCTheme.space5)
+            .padding(.bottom, CCTheme.space6)
         }
-        .background(CCTheme.backgroundPrimary)
+        .background(CCTheme.canvas)
+    }
+
+    private func pageView(_ page: OnboardingPage) -> some View {
+        VStack(alignment: .leading, spacing: CCTheme.space5) {
+            Spacer()
+
+            Text(page.eyebrow.uppercased())
+                .font(.ccCaption)
+                .foregroundStyle(CCTheme.slate)
+                .tracking(0.5)
+
+            Text(page.title)
+                .font(.system(size: 38, weight: .bold, design: .default))
+                .foregroundStyle(CCTheme.ink)
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(page.body)
+                .font(.ccBody)
+                .foregroundStyle(CCTheme.slate)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer()
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, CCTheme.space5)
     }
 
     private func complete() {
@@ -118,8 +114,7 @@ struct OnboardingView: View {
 }
 
 private struct OnboardingPage {
-    let icon: String
+    let eyebrow: String
     let title: String
-    let description: String
-    let color: Color
+    let body: String
 }

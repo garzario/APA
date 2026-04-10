@@ -27,73 +27,145 @@ struct AddMemberView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Role picker
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Role")
-                        .font(.caption)
-                        .foregroundStyle(CCTheme.textSecondary)
-                        .padding(.horizontal, CCTheme.paddingMedium)
-
-                    Picker("Role", selection: $selectedRole) {
-                        ForEach(availableRoles, id: \.self) { role in
-                            Text(role.rawValue).tag(role)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal, CCTheme.paddingMedium)
+            ScrollView {
+                VStack(alignment: .leading, spacing: CCTheme.space7) {
+                    header
+                    roleField
+                    searchField
+                    usersList
                 }
-                .padding(.vertical, CCTheme.paddingMedium)
-                .background(CCTheme.backgroundCard)
-
-                List {
-                    if availableUsers.isEmpty {
-                        Text(searchText.isEmpty ? "No users available to add" : "No users match your search")
-                            .font(.subheadline)
-                            .foregroundStyle(CCTheme.textSecondary)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                    } else {
-                        ForEach(availableUsers) { user in
-                            Button {
-                                state.addMember(user, to: circleId, role: selectedRole)
-                                dismiss()
-                            } label: {
-                                HStack(spacing: 14) {
-                                    Image(systemName: user.avatarIcon)
-                                        .font(.title2)
-                                        .foregroundStyle(CCTheme.primaryBlue)
-                                        .frame(width: 40, height: 40)
-                                        .background(CCTheme.lightBlue)
-                                        .clipShape(SwiftUI.Circle())
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(user.name)
-                                            .font(.subheadline.bold())
-                                            .foregroundStyle(CCTheme.textPrimary)
-                                        Text(user.email)
-                                            .font(.caption)
-                                            .foregroundStyle(CCTheme.textSecondary)
-                                    }
-                                    Spacer()
-                                    Image(systemName: "plus.circle.fill")
-                                        .foregroundStyle(CCTheme.primaryBlue)
-                                }
-                                .padding(.vertical, 4)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-                .searchable(text: $searchText, prompt: "Search by name or email")
+                .padding(.vertical, CCTheme.space5)
+                .padding(.bottom, CCTheme.space8)
             }
-            .navigationTitle("Add member")
+            .background(CCTheme.canvas)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
+                        .font(.ccBody)
+                        .foregroundStyle(CCTheme.ink)
+                }
+                ToolbarItem(placement: .principal) {
+                    Text("Add member")
+                        .font(.ccHeadline)
+                        .foregroundStyle(CCTheme.ink)
                 }
             }
         }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space2) {
+            Text("INVITE")
+                .font(.ccCaption)
+                .foregroundStyle(CCTheme.slate)
+                .tracking(0.5)
+            Text("Who are you\nadding?")
+                .font(.ccLargeTitle)
+                .foregroundStyle(CCTheme.ink)
+        }
+        .padding(.horizontal, CCTheme.space5)
+    }
+
+    private var roleField: some View {
+        VStack(alignment: .leading, spacing: CCTheme.space2) {
+            Text("ROLE")
+                .font(.ccCaption)
+                .foregroundStyle(CCTheme.slate)
+                .tracking(0.5)
+                .padding(.horizontal, CCTheme.space5)
+
+            HStack(spacing: CCTheme.space2) {
+                ForEach(availableRoles, id: \.self) { role in
+                    Button {
+                        selectedRole = role
+                    } label: {
+                        Text(role.rawValue)
+                            .font(.ccSubhead.weight(selectedRole == role ? .semibold : .regular))
+                            .foregroundStyle(selectedRole == role ? .white : CCTheme.ink)
+                            .padding(.horizontal, CCTheme.space4)
+                            .padding(.vertical, CCTheme.space3)
+                            .background(selectedRole == role ? CCTheme.navy : CCTheme.fog)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, CCTheme.space5)
+        }
+    }
+
+    private var searchField: some View {
+        HStack(spacing: CCTheme.space3) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 14, weight: .regular))
+                .foregroundStyle(CCTheme.slate)
+            TextField("Search by name or email", text: $searchText)
+                .font(.ccBody)
+                .textInputAutocapitalization(.never)
+        }
+        .padding(CCTheme.space4)
+        .background(CCTheme.fog)
+        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+        .padding(.horizontal, CCTheme.space5)
+    }
+
+    @ViewBuilder
+    private var usersList: some View {
+        if availableUsers.isEmpty {
+            InlineEmptyState(
+                icon: "person.crop.circle.badge.questionmark",
+                title: searchText.isEmpty ? "No users available" : "No matches",
+                subtitle: searchText.isEmpty ? "Everyone is already in this circle" : "Try a different search"
+            )
+            .padding(.horizontal, CCTheme.space5)
+        } else {
+            CCSection("People") {
+                VStack(spacing: 0) {
+                    Divider()
+                    ForEach(Array(availableUsers.enumerated()), id: \.element.id) { index, user in
+                        Button {
+                            state.addMember(user, to: circleId, role: selectedRole)
+                            dismiss()
+                        } label: {
+                            userRow(user)
+                        }
+                        .buttonStyle(.plain)
+                        if index < availableUsers.count - 1 {
+                            Divider().padding(.leading, CCTheme.space5)
+                        }
+                    }
+                    Divider()
+                }
+            }
+        }
+    }
+
+    private func userRow(_ user: User) -> some View {
+        HStack(spacing: CCTheme.space4) {
+            Image(systemName: user.avatarIcon)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(CCTheme.navy)
+                .frame(width: 36, height: 36)
+                .background(CCTheme.fog)
+                .clipShape(SwiftUI.Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(user.name)
+                    .font(.ccBody)
+                    .foregroundStyle(CCTheme.ink)
+                Text(user.email)
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+            }
+            Spacer()
+            Image(systemName: "plus")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(CCTheme.navy)
+        }
+        .padding(.horizontal, CCTheme.space5)
+        .padding(.vertical, CCTheme.space4)
+        .contentShape(Rectangle())
     }
 
     private var availableRoles: [MemberRole] {

@@ -12,23 +12,31 @@ struct StatementView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: CCTheme.paddingLarge) {
+            VStack(alignment: .leading, spacing: CCTheme.space8) {
                 if let statement {
-                    heroSummary(statement)
-                    narrativeCard(statement)
-                    spendingChart(statement)
+                    heroSection(statement)
+                    narrativeSection(statement)
+                    chartSection(statement)
                     insightsSection(statement)
-                    regenerateButton
+                    refreshSection
                 } else {
-                    ProgressView("Loading insights")
-                        .padding()
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, CCTheme.space9)
                 }
             }
-            .padding(.horizontal, CCTheme.paddingMedium)
-            .padding(.bottom, CCTheme.paddingLarge)
+            .padding(.vertical, CCTheme.space5)
+            .padding(.bottom, CCTheme.space8)
         }
-        .background(CCTheme.backgroundPrimary)
-        .navigationTitle("Smart Insights")
+        .background(CCTheme.canvas)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Text("Insights")
+                    .font(.ccHeadline)
+                    .foregroundStyle(CCTheme.ink)
+            }
+        }
         .alert("Could not refresh", isPresented: .init(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
@@ -39,127 +47,176 @@ struct StatementView: View {
         }
     }
 
-    // MARK: - Hero Summary
+    // MARK: - Hero
 
-    private func heroSummary(_ statement: SmartStatement) -> some View {
-        VStack(spacing: 12) {
-            Text("\(statement.month) \(String(statement.year))")
-                .font(.subheadline.bold())
-                .foregroundStyle(.white.opacity(0.9))
+    private func heroSection(_ statement: SmartStatement) -> some View {
+        VStack(alignment: .leading, spacing: CCTheme.space3) {
+            Text("\(statement.month.uppercased()) \(String(statement.year))")
+                .font(.ccCaption)
+                .foregroundStyle(CCTheme.slate)
+                .tracking(0.5)
+
+            Text("You spent")
+                .font(.ccTitle)
+                .foregroundStyle(CCTheme.slate)
 
             Text("$\(Int(statement.totalSpent).formatted())")
-                .font(.system(size: 48, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .font(.ccAmountLarge)
+                .foregroundStyle(CCTheme.ink)
+                .monospacedDigit()
 
-            HStack(spacing: 6) {
-                Image(systemName: statement.isSpendingUp ? "arrow.up.right" : "arrow.down.right")
+            HStack(spacing: CCTheme.space2) {
+                Image(systemName: statement.isSpendingUp ? "arrow.up" : "arrow.down")
+                    .font(.system(size: 12, weight: .semibold))
                 Text("\(abs(Int(statement.comparedToLastMonth)))% vs last month")
+                    .font(.ccSubhead)
             }
-            .font(.subheadline.bold())
-            .foregroundStyle(.white)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(.white.opacity(0.2))
-            .clipShape(Capsule())
+            .foregroundStyle(statement.isSpendingUp ? CCTheme.red : CCTheme.positive)
         }
-        .frame(maxWidth: .infinity)
-        .padding(CCTheme.paddingLarge)
-        .background(
-            LinearGradient(
-                colors: [CCTheme.primaryBlue, CCTheme.accentBlue],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusLarge))
-        .shadow(color: CCTheme.primaryBlue.opacity(0.3), radius: 16, y: 6)
+        .padding(.horizontal, CCTheme.space5)
     }
 
     // MARK: - Narrative
 
-    private func narrativeCard(_ statement: SmartStatement) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
+    private func narrativeSection(_ statement: SmartStatement) -> some View {
+        VStack(alignment: .leading, spacing: CCTheme.space3) {
+            HStack(spacing: CCTheme.space2) {
                 Image(systemName: "sparkles")
-                    .foregroundStyle(CCTheme.accentBlue)
-                Text("AI summary")
-                    .font(.caption.bold())
-                    .foregroundStyle(CCTheme.accentBlue)
+                    .font(.system(size: 12, weight: .medium))
+                Text("AI SUMMARY")
+                    .font(.ccCaption)
+                    .tracking(0.5)
             }
+            .foregroundStyle(CCTheme.navy)
+
             Text(statement.narrative)
-                .font(.subheadline)
-                .foregroundStyle(CCTheme.textPrimary)
+                .font(.ccBody)
+                .foregroundStyle(CCTheme.ink)
                 .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .padding(CCTheme.space5)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(CCTheme.paddingMedium)
-        .background(CCTheme.lightBlue.opacity(0.5))
-        .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
+        .background(CCTheme.fog)
+        .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+        .padding(.horizontal, CCTheme.space5)
     }
 
     // MARK: - Chart
 
-    private func spendingChart(_ statement: SmartStatement) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Spending breakdown")
-                .font(.headline)
-                .foregroundStyle(CCTheme.textPrimary)
-
-            Chart(statement.categoryBreakdown) { item in
-                BarMark(
-                    x: .value("Amount", item.amount),
-                    y: .value("Category", item.category.rawValue)
-                )
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [CCTheme.primaryBlue, CCTheme.accentBlue],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .cornerRadius(6)
-                .annotation(position: .trailing) {
-                    Text("$\(Int(item.amount).formatted())")
-                        .font(.caption2.bold())
-                        .foregroundStyle(CCTheme.textSecondary)
+    private func chartSection(_ statement: SmartStatement) -> some View {
+        CCSection("Where it went") {
+            VStack(spacing: 0) {
+                Divider()
+                ForEach(Array(statement.categoryBreakdown.enumerated()), id: \.element.id) { index, item in
+                    categoryRow(item: item, maxAmount: statement.categoryBreakdown.map { $0.amount }.max() ?? 1)
+                    if index < statement.categoryBreakdown.count - 1 {
+                        Divider().padding(.leading, CCTheme.space5)
+                    }
                 }
+                Divider()
             }
-            .chartXAxis(.hidden)
-            .chartYAxis {
-                AxisMarks(position: .leading) { _ in
-                    AxisValueLabel()
-                        .font(.caption2)
-                }
-            }
-            .frame(height: 260)
         }
-        .padding(CCTheme.paddingMedium)
-        .background(CCTheme.backgroundCard)
-        .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
-        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+    }
+
+    private func categoryRow(item: CategorySpending, maxAmount: Double) -> some View {
+        VStack(alignment: .leading, spacing: CCTheme.space2) {
+            HStack {
+                Text(item.category.rawValue)
+                    .font(.ccBody)
+                    .foregroundStyle(CCTheme.ink)
+                Spacer()
+                Text("$\(Int(item.amount).formatted())")
+                    .font(.ccBody)
+                    .foregroundStyle(CCTheme.ink)
+                    .monospacedDigit()
+            }
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(CCTheme.hairline)
+                        .frame(height: 3)
+                    Capsule()
+                        .fill(CCTheme.navy)
+                        .frame(width: geo.size.width * (item.amount / maxAmount), height: 3)
+                }
+            }
+            .frame(height: 3)
+        }
+        .padding(.horizontal, CCTheme.space5)
+        .padding(.vertical, CCTheme.space3)
     }
 
     // MARK: - Insights
 
     private func insightsSection(_ statement: SmartStatement) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Insights")
-                .font(.headline)
-                .foregroundStyle(CCTheme.textPrimary)
-
-            ForEach(statement.insights) { insight in
-                InsightRow(insight: insight)
+        CCSection("What we noticed") {
+            VStack(spacing: 0) {
+                Divider()
+                ForEach(Array(statement.insights.enumerated()), id: \.element.id) { index, insight in
+                    insightRow(insight)
+                    if index < statement.insights.count - 1 {
+                        Divider().padding(.leading, CCTheme.space5)
+                    }
+                }
+                Divider()
             }
         }
     }
 
-    // MARK: - Regenerate Button
+    private func insightRow(_ insight: Insight) -> some View {
+        HStack(alignment: .top, spacing: CCTheme.space4) {
+            Image(systemName: iconFor(insight.type))
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(colorFor(insight.type))
+                .frame(width: 28, alignment: .center)
 
-    private var regenerateButton: some View {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(insight.title)
+                    .font(.ccBody)
+                    .foregroundStyle(CCTheme.ink)
+                Text(insight.description)
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+                if let action = insight.actionable {
+                    Text(action)
+                        .font(.ccFootnote)
+                        .foregroundStyle(CCTheme.navy)
+                        .padding(.top, 2)
+                }
+            }
+            Spacer()
+        }
+        .padding(.horizontal, CCTheme.space5)
+        .padding(.vertical, CCTheme.space4)
+    }
+
+    private func iconFor(_ type: InsightType) -> String {
+        switch type {
+        case .positive: return "arrow.down.circle"
+        case .warning: return "exclamationmark.circle"
+        case .tip: return "lightbulb"
+        case .milestone: return "checkmark.circle"
+        }
+    }
+
+    private func colorFor(_ type: InsightType) -> Color {
+        switch type {
+        case .positive: return CCTheme.positive
+        case .warning: return CCTheme.caution
+        case .tip: return CCTheme.navy
+        case .milestone: return CCTheme.positive
+        }
+    }
+
+    // MARK: - Refresh
+
+    private var refreshSection: some View {
         Button {
             Task { await regenerate() }
         } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: CCTheme.space2) {
                 if isRefreshing {
                     ProgressView()
                         .controlSize(.small)
@@ -167,16 +224,12 @@ struct StatementView: View {
                 } else {
                     Image(systemName: "arrow.clockwise")
                 }
-                Text(isRefreshing ? "Generating..." : "Refresh with AI")
+                Text(isRefreshing ? "Generating…" : "Refresh insights")
             }
-            .font(.subheadline.bold())
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .background(CCTheme.primaryBlue)
-            .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
         }
+        .buttonStyle(CCPrimaryButtonStyle())
         .disabled(isRefreshing)
+        .padding(.horizontal, CCTheme.space5)
     }
 
     private func regenerate() async {
@@ -214,61 +267,6 @@ struct StatementView: View {
             state.currentStatement = updated
         } catch {
             errorMessage = error.localizedDescription
-        }
-    }
-}
-
-// MARK: - Insight Row
-
-struct InsightRow: View {
-    let insight: Insight
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            Image(systemName: insight.type.icon)
-                .font(.title3)
-                .foregroundStyle(iconColor)
-                .frame(width: 40, height: 40)
-                .background(iconBackground)
-                .clipShape(SwiftUI.Circle())
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(insight.title)
-                    .font(.subheadline.bold())
-                    .foregroundStyle(CCTheme.textPrimary)
-                Text(insight.description)
-                    .font(.caption)
-                    .foregroundStyle(CCTheme.textSecondary)
-                if let action = insight.actionable {
-                    Text(action)
-                        .font(.caption.bold())
-                        .foregroundStyle(CCTheme.accentBlue)
-                        .padding(.top, 2)
-                }
-            }
-            Spacer()
-        }
-        .padding(CCTheme.paddingMedium)
-        .background(CCTheme.backgroundCard)
-        .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
-        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
-    }
-
-    private var iconColor: Color {
-        switch insight.type {
-        case .positive: return CCTheme.successGreen
-        case .warning: return CCTheme.warningOrange
-        case .tip: return CCTheme.accentBlue
-        case .milestone: return .yellow
-        }
-    }
-
-    private var iconBackground: Color {
-        switch insight.type {
-        case .positive: return CCTheme.successGreen.opacity(0.15)
-        case .warning: return CCTheme.warningOrange.opacity(0.15)
-        case .tip: return CCTheme.lightBlue
-        case .milestone: return Color.yellow.opacity(0.15)
         }
     }
 }

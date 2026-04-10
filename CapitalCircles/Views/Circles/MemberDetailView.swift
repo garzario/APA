@@ -22,25 +22,33 @@ struct MemberDetailView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: CCTheme.paddingLarge) {
+                VStack(alignment: .leading, spacing: CCTheme.space7) {
                     header
-
-                    roleCard
-
-                    visibilityCard
-
+                    roleSection
+                    visibilitySection
                     if !isCurrentUser {
                         removeButton
                     }
                 }
-                .padding(.horizontal, CCTheme.paddingMedium)
-                .padding(.bottom, CCTheme.paddingLarge)
+                .padding(.vertical, CCTheme.space5)
+                .padding(.bottom, CCTheme.space8)
             }
-            .background(CCTheme.backgroundPrimary)
+            .background(CCTheme.canvas)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(CCTheme.ink)
+                    }
+                }
+                ToolbarItem(placement: .principal) {
+                    Text("Member")
+                        .font(.ccHeadline)
+                        .foregroundStyle(CCTheme.ink)
                 }
             }
             .alert("Remove member?", isPresented: $showRemoveAlert) {
@@ -50,120 +58,116 @@ struct MemberDetailView: View {
                     dismiss()
                 }
             } message: {
-                Text("This will remove \(member.user.name) from the circle. They can be re-added later.")
+                Text("\(member.user.name) will be removed from the circle. They can be invited back later.")
             }
         }
     }
 
     private var header: some View {
-        VStack(spacing: 12) {
+        HStack(spacing: CCTheme.space4) {
             Image(systemName: member.user.avatarIcon)
-                .font(.system(size: 50))
-                .foregroundStyle(CCTheme.primaryBlue)
-                .frame(width: 100, height: 100)
-                .background(CCTheme.lightBlue)
+                .font(.system(size: 28, weight: .regular))
+                .foregroundStyle(CCTheme.navy)
+                .frame(width: 72, height: 72)
+                .background(CCTheme.fog)
                 .clipShape(SwiftUI.Circle())
 
-            Text(member.user.name)
-                .font(.title2.bold())
-                .foregroundStyle(CCTheme.textPrimary)
-
-            Text(member.user.email)
-                .font(.subheadline)
-                .foregroundStyle(CCTheme.textSecondary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(member.user.name)
+                    .font(.ccTitle)
+                    .foregroundStyle(CCTheme.ink)
+                Text(member.user.email)
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+            }
+            Spacer()
         }
-        .padding(.top, CCTheme.paddingLarge)
+        .padding(.horizontal, CCTheme.space5)
     }
 
-    private var roleCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Role")
-                .font(.caption)
-                .foregroundStyle(CCTheme.textSecondary)
-
-            HStack(spacing: 12) {
-                Image(systemName: roleIcon(member.role))
-                    .foregroundStyle(CCTheme.primaryBlue)
-                    .font(.title3)
-                    .frame(width: 32, height: 32)
-                    .background(CCTheme.lightBlue)
-                    .clipShape(SwiftUI.Circle())
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(member.role.rawValue)
-                        .font(.subheadline.bold())
-                        .foregroundStyle(CCTheme.textPrimary)
-                    Text(roleDescription(member.role))
-                        .font(.caption)
-                        .foregroundStyle(CCTheme.textSecondary)
+    private var roleSection: some View {
+        CCSection("Role") {
+            VStack(spacing: 0) {
+                Divider()
+                HStack(spacing: CCTheme.space4) {
+                    Image(systemName: roleIcon(member.role))
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundStyle(CCTheme.navy)
+                        .frame(width: 28, alignment: .center)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(member.role.rawValue)
+                            .font(.ccBody)
+                            .foregroundStyle(CCTheme.ink)
+                        Text(roleDescription(member.role))
+                            .font(.ccFootnote)
+                            .foregroundStyle(CCTheme.slate)
+                    }
+                    Spacer()
                 }
-                Spacer()
+                .padding(.horizontal, CCTheme.space5)
+                .padding(.vertical, CCTheme.space4)
+                Divider()
             }
         }
-        .padding(CCTheme.paddingMedium)
-        .background(CCTheme.backgroundCard)
-        .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
-        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
     }
 
-    private var visibilityCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Visibility")
-                .font(.caption)
-                .foregroundStyle(CCTheme.textSecondary)
-
-            ForEach(VisibilityLevel.allCases, id: \.self) { level in
-                Button {
-                    if !isCurrentUser {
-                        selectedVisibility = level
-                        state.updateVisibility(level, for: member.id, in: circleId)
-                    }
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: selectedVisibility == level ? "largecircle.fill.circle" : "circle")
-                            .foregroundStyle(CCTheme.primaryBlue)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(level.rawValue)
-                                .font(.subheadline.bold())
-                                .foregroundStyle(CCTheme.textPrimary)
-                            Text(level.description)
-                                .font(.caption)
-                                .foregroundStyle(CCTheme.textSecondary)
+    private var visibilitySection: some View {
+        CCSection("What this member sees") {
+            VStack(spacing: 0) {
+                Divider()
+                ForEach(Array(VisibilityLevel.allCases.enumerated()), id: \.element) { index, level in
+                    Button {
+                        if !isCurrentUser {
+                            selectedVisibility = level
+                            state.updateVisibility(level, for: member.id, in: circleId)
                         }
-                        Spacer()
+                    } label: {
+                        HStack(spacing: CCTheme.space4) {
+                            Image(systemName: selectedVisibility == level ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 18))
+                                .foregroundStyle(selectedVisibility == level ? CCTheme.navy : CCTheme.hairline)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(level.rawValue)
+                                    .font(.ccBody)
+                                    .foregroundStyle(CCTheme.ink)
+                                Text(level.description)
+                                    .font(.ccFootnote)
+                                    .foregroundStyle(CCTheme.slate)
+                            }
+                            Spacer()
+                        }
+                        .padding(.horizontal, CCTheme.space5)
+                        .padding(.vertical, CCTheme.space4)
+                        .contentShape(Rectangle())
                     }
-                    .padding(.vertical, 6)
+                    .buttonStyle(.plain)
+                    .disabled(isCurrentUser)
+                    if index < VisibilityLevel.allCases.count - 1 {
+                        Divider().padding(.leading, CCTheme.space5)
+                    }
                 }
-                .buttonStyle(.plain)
-                .disabled(isCurrentUser)
-                if level != VisibilityLevel.allCases.last {
-                    Divider()
-                }
+                Divider()
             }
         }
-        .padding(CCTheme.paddingMedium)
-        .background(CCTheme.backgroundCard)
-        .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
-        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
     }
 
     private var removeButton: some View {
-        Button(role: .destructive) {
+        Button {
             showRemoveAlert = true
         } label: {
-            Label("Remove from circle", systemImage: "person.fill.xmark")
+            Text("Remove from circle")
+                .font(.ccBody)
+                .foregroundStyle(CCTheme.red)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(CCTheme.errorRed.opacity(0.1))
-                .foregroundStyle(CCTheme.errorRed)
-                .clipShape(RoundedRectangle(cornerRadius: CCTheme.cornerRadiusMedium))
+                .padding(.vertical, CCTheme.space4)
         }
+        .padding(.horizontal, CCTheme.space5)
     }
 
     private func roleIcon(_ role: MemberRole) -> String {
         switch role {
-        case .admin: return "star.fill"
-        case .member: return "person.fill"
+        case .admin: return "star"
+        case .member: return "person"
         case .junior: return "figure.child"
         }
     }
