@@ -53,15 +53,36 @@ def create_user(payload: UserCreate):
             return cur.fetchone()
 
 
-@app.get("/users/{user_id}", response_model=User)
-def get_user(user_id: uuid.UUID):
+# Search must come BEFORE /users/{user_id} so it matches first
+@app.get("/users/search")
+def search_users(q: str, exclude: str | None = None):
+    """Search users by partial name or email match."""
+    if len(q) < 2:
+        return []
     with get_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM users WHERE id = %s", (str(user_id),))
-            user = cur.fetchone()
-            if not user:
-                raise HTTPException(404, "User not found")
-            return user
+            if exclude:
+                cur.execute(
+                    """
+                    SELECT * FROM users
+                    WHERE (LOWER(name) LIKE %s OR LOWER(email) LIKE %s)
+                    AND id::text != %s
+                    ORDER BY created_at DESC
+                    LIMIT 20
+                    """,
+                    (f"%{q.lower()}%", f"%{q.lower()}%", exclude),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT * FROM users
+                    WHERE LOWER(name) LIKE %s OR LOWER(email) LIKE %s
+                    ORDER BY created_at DESC
+                    LIMIT 20
+                    """,
+                    (f"%{q.lower()}%", f"%{q.lower()}%"),
+                )
+            return cur.fetchall()
 
 
 @app.get("/users/email/{email}", response_model=User)
@@ -69,6 +90,17 @@ def get_user_by_email(email: str):
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+            user = cur.fetchone()
+            if not user:
+                raise HTTPException(404, "User not found")
+            return user
+
+
+@app.get("/users/{user_id}", response_model=User)
+def get_user(user_id: uuid.UUID):
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM users WHERE id = %s", (str(user_id),))
             user = cur.fetchone()
             if not user:
                 raise HTTPException(404, "User not found")

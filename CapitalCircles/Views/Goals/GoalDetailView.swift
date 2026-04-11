@@ -8,17 +8,17 @@ struct GoalDetailView: View {
     @State private var showContribute = false
     @State private var showDeleteAlert = false
 
-    private var currentGoal: Goal {
-        state.allGoals.first(where: { $0.id == goal.id }) ?? goal
-    }
-
     var body: some View {
+        // Read the latest goal directly from state every time the body
+        // re-evaluates so contributions update in real time.
+        let latest = state.allGoals.first(where: { $0.id == goal.id }) ?? goal
+
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: CCTheme.space7) {
-                    heroSection
-                    detailsSection
-                    contributionsSection
+                    heroSection(latest)
+                    detailsSection(latest)
+                    contributionsSection(latest)
                     dangerZone
                 }
                 .padding(.vertical, CCTheme.space5)
@@ -41,7 +41,7 @@ struct GoalDetailView: View {
                 contributeButton
             }
             .sheet(isPresented: $showContribute) {
-                ContributeSheet(goal: currentGoal)
+                ContributeSheet(goal: latest)
             }
             .alert("Delete goal?", isPresented: $showDeleteAlert) {
                 Button("Cancel", role: .cancel) {}
@@ -57,9 +57,9 @@ struct GoalDetailView: View {
 
     // MARK: - Hero
 
-    private var heroSection: some View {
+    private func heroSection(_ currentGoal: Goal) -> some View {
         VStack(alignment: .leading, spacing: CCTheme.space4) {
-            Text(goalSubtitle.uppercased())
+            Text(subtitle(for: currentGoal).uppercased())
                 .font(.ccCaption)
                 .foregroundStyle(CCTheme.slate)
                 .tracking(0.5)
@@ -79,7 +79,6 @@ struct GoalDetailView: View {
                     .monospacedDigit()
             }
 
-            // Progress bar
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
@@ -91,6 +90,7 @@ struct GoalDetailView: View {
                 }
             }
             .frame(height: 6)
+            .animation(.easeInOut(duration: 0.3), value: currentGoal.progressPercentage)
 
             HStack(spacing: CCTheme.space4) {
                 Text("\(Int(currentGoal.progressPercentage * 100))% complete")
@@ -106,7 +106,7 @@ struct GoalDetailView: View {
         .padding(.horizontal, CCTheme.space5)
     }
 
-    private var goalSubtitle: String {
+    private func subtitle(for currentGoal: Goal) -> String {
         if currentGoal.isShared {
             if let circle = state.circles.first(where: { $0.id == currentGoal.circleId }) {
                 return "\(circle.name) • Shared"
@@ -118,7 +118,7 @@ struct GoalDetailView: View {
 
     // MARK: - Details
 
-    private var detailsSection: some View {
+    private func detailsSection(_ currentGoal: Goal) -> some View {
         CCSection("Details") {
             VStack(spacing: 0) {
                 Divider()
@@ -155,7 +155,7 @@ struct GoalDetailView: View {
 
     // MARK: - Contributions
 
-    private var contributionsSection: some View {
+    private func contributionsSection(_ currentGoal: Goal) -> some View {
         CCSection("Contributions") {
             if currentGoal.contributions.isEmpty {
                 InlineEmptyState(
@@ -167,9 +167,10 @@ struct GoalDetailView: View {
             } else {
                 VStack(spacing: 0) {
                     Divider()
-                    ForEach(Array(currentGoal.contributions.sorted(by: { $0.date > $1.date }).enumerated()), id: \.element.id) { index, contribution in
+                    let sorted = currentGoal.contributions.sorted(by: { $0.date > $1.date })
+                    ForEach(Array(sorted.enumerated()), id: \.element.id) { index, contribution in
                         contributionRow(contribution)
-                        if index < currentGoal.contributions.count - 1 {
+                        if index < sorted.count - 1 {
                             Divider().padding(.leading, CCTheme.space5)
                         }
                     }
@@ -192,7 +193,7 @@ struct GoalDetailView: View {
             Spacer()
             Text("+$\(Int(contribution.amount).formatted())")
                 .font(.ccBody)
-                .foregroundStyle(CCTheme.ink)
+                .foregroundStyle(CCTheme.positive)
                 .monospacedDigit()
         }
         .padding(.horizontal, CCTheme.space5)

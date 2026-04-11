@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Member invitation flow with live search, role picker, and quick-invite cards.
-/// Users can search the directory by name or email, see suggested people,
-/// and invite them with a single tap.
+/// Member invitation flow with live backend search.
+/// As the user types, the app queries the backend for matching users.
+/// If none match, they can still invite by email directly.
 struct AddMemberView: View {
     @Environment(AppStateManager.self) private var state
     @Environment(\.dismiss) private var dismiss
@@ -10,28 +10,17 @@ struct AddMemberView: View {
 
     @State private var searchText: String = ""
     @State private var selectedRole: MemberRole = .member
-    @FocusState private var isSearchFocused: Bool
+    @State private var searchResults: [APIUser] = []
+    @State private var isSearching: Bool = false
+    @State private var searchTask: Task<Void, Never>?
 
     private var circle: Circle? {
         state.circles.first(where: { $0.id == circleId })
     }
 
-    /// Users not already in this circle
-    private var availableUsers: [User] {
-        guard let circle else { return [] }
-        let memberIds = Set(circle.members.map { $0.user.id })
-        return state.allUsers.filter { !memberIds.contains($0.id) }
-    }
-
-    /// Matches to the current search query
-    private var matchingUsers: [User] {
-        let trimmed = searchText.trimmingCharacters(in: .whitespaces)
-        if trimmed.isEmpty { return availableUsers }
-        let query = trimmed.lowercased()
-        return availableUsers.filter {
-            $0.name.lowercased().contains(query) ||
-            $0.email.lowercased().contains(query)
-        }
+    /// Current circle member IDs so we exclude them from results
+    private var existingMemberIds: Set<UUID> {
+        Set(circle?.members.map { $0.user.id } ?? [])
     }
 
     var body: some View {
@@ -41,8 +30,8 @@ struct AddMemberView: View {
                     header
                     searchField
                     roleField
-                    usersList
-                    if !searchText.contains("@") && !searchText.isEmpty && matchingUsers.isEmpty {
+                    resultsSection
+                    if looksLikeEmail(searchText) && !searchResults.contains(where: { $0.email == searchText.lowercased() }) {
                         inviteByEmailCard
                     }
                 }
@@ -58,6 +47,9 @@ struct AddMemberView: View {
                         .font(.ccBody)
                         .foregroundStyle(CCTheme.ink)
                 }
+            }
+            .onChange(of: searchText) { _, newValue in
+                performSearch(query: newValue)
             }
         }
     }
@@ -85,8 +77,10 @@ struct AddMemberView: View {
                 .font(.ccBody)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
-                .focused($isSearchFocused)
-            if !searchText.isEmpty {
+            if isSearching {
+                ProgressView()
+                    .controlSize(.small)
+            } else if !searchText.isEmpty {
                 Button {
                     searchText = ""
                 } label: {
@@ -119,7 +113,7 @@ struct AddMemberView: View {
                             HStack(spacing: 6) {
                                 Image(systemName: roleIcon(role))
                                     .font(.system(size: 12, weight: .medium))
-                                Text(role.rawValue)
+                                Text(role.label(for: circle?.type ?? .family))
                                     .font(.ccSubhead.weight(selectedRole == role ? .semibold : .regular))
                             }
                             .foregroundStyle(selectedRole == role ? .white : CCTheme.ink)
@@ -133,51 +127,64 @@ struct AddMemberView: View {
                 }
                 .padding(.horizontal, CCTheme.space5)
             }
-
-            Text(roleDescription(selectedRole))
-                .font(.ccFootnote)
-                .foregroundStyle(CCTheme.slate)
-                .padding(.horizontal, CCTheme.space5)
-                .padding(.top, 2)
         }
     }
 
     @ViewBuilder
-    private var usersList: some View {
-        if matchingUsers.isEmpty {
-            if searchText.isEmpty {
-                InlineEmptyState(
-                    icon: "person.crop.circle.badge.questionmark",
-                    title: "Everyone is already here",
-                    subtitle: "All known users are already members of this circle"
-                )
-                .padding(.horizontal, CCTheme.space5)
+    private var resultsSection: some View {
+        if searchText.count < 2 {
+            HStack(alignment: .top, spacing: CCTheme.space3) {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(CCTheme.slate)
+                Text("Start typing to search for people already on Capital Circles, or enter an email to send an invite.")
+                    .font(.ccFootnote)
+                    .foregroundStyle(CCTheme.slate)
+                    .lineSpacing(3)
             }
-        } else {
-            CCSection(searchText.isEmpty ? "Suggested" : "Matches") {
-                VStack(spacing: 0) {
-                    Divider()
-                    ForEach(Array(matchingUsers.enumerated()), id: \.element.id) { index, user in
-                        Button {
-                            state.addMember(user, to: circleId, role: selectedRole)
-                            dismiss()
-                        } label: {
-                            userRow(user)
+            .padding(CCTheme.space4)
+            .background(CCTheme.fog)
+            .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusMedium))
+            .padding(.horizontal, CCTheme.space5)
+        } else if !searchResults.isEmpty {
+            let filtered = searchResults.filter { !existingMemberIds.contains($0.id) }
+            if !filtered.isEmpty {
+                CCSection("Found on Capital Circles") {
+                    VStack(spacing: 0) {
+                        Divider()
+                        ForEach(Array(filtered.enumerated()), id: \.element.id) { index, apiUser in
+                            Button {
+                                addExistingUser(apiUser)
+                            } label: {
+                                userRow(apiUser)
+                            }
+                            .buttonStyle(.plain)
+                            if index < filtered.count - 1 {
+                                Divider().padding(.leading, 76)
+                            }
                         }
-                        .buttonStyle(.plain)
-                        if index < matchingUsers.count - 1 {
-                            Divider().padding(.leading, 76)
-                        }
+                        Divider()
                     }
-                    Divider()
                 }
             }
+        } else if !isSearching {
+            InlineEmptyState(
+                icon: "person.crop.circle.badge.questionmark",
+                title: "No match on Capital Circles",
+                subtitle: "You can still invite them by email below."
+            )
+            .padding(.horizontal, CCTheme.space5)
         }
     }
 
-    private func userRow(_ user: User) -> some View {
+    private func userRow(_ user: APIUser) -> some View {
         HStack(spacing: CCTheme.space4) {
-            CCAvatar(user: user, size: 44)
+            Text(initials(user.name))
+                .font(.ccHeadline)
+                .foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .background(CCTheme.avatarColor(for: user.id))
+                .clipShape(SwiftUI.Circle())
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(user.name)
@@ -205,26 +212,24 @@ struct AddMemberView: View {
 
     private var inviteByEmailCard: some View {
         VStack(alignment: .leading, spacing: CCTheme.space3) {
-            Text("NO MATCH")
+            Text("SEND EMAIL INVITE")
                 .font(.ccCaption)
                 .foregroundStyle(CCTheme.slate)
                 .tracking(0.5)
 
-            Text("We could not find \"\(searchText)\"")
-                .font(.ccBody)
+            Text(searchText.lowercased())
+                .font(.ccBody.bold())
                 .foregroundStyle(CCTheme.ink)
 
-            Text("You can still invite them. They will get a link to join your circle and create an account.")
+            Text("They will get a link to join Capital Circles and your circle.")
                 .font(.ccFootnote)
                 .foregroundStyle(CCTheme.slate)
                 .lineSpacing(3)
 
             Button {
-                // In production this would send an email invite.
-                // For the demo we just close the sheet.
-                dismiss()
+                sendEmailInvite()
             } label: {
-                Text("Send an email invite")
+                Text("Send invite")
                     .font(.ccSubhead.bold())
                     .foregroundStyle(.white)
                     .padding(.horizontal, CCTheme.space5)
@@ -241,6 +246,78 @@ struct AddMemberView: View {
         .padding(.horizontal, CCTheme.space5)
     }
 
+    // MARK: - Actions
+
+    private func performSearch(query: String) {
+        searchTask?.cancel()
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        guard trimmed.count >= 2 else {
+            searchResults = []
+            isSearching = false
+            return
+        }
+
+        searchTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000) // 300ms debounce
+            if Task.isCancelled { return }
+            await MainActor.run { isSearching = true }
+            do {
+                let results = try await UserAPI.search(query: trimmed, excludeUserId: state.currentUser.id)
+                if Task.isCancelled { return }
+                await MainActor.run {
+                    self.searchResults = results
+                    self.isSearching = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.searchResults = []
+                    self.isSearching = false
+                }
+            }
+        }
+    }
+
+    private func addExistingUser(_ apiUser: APIUser) {
+        // Build local User and add via state manager (which also syncs to backend)
+        var user = User(
+            id: apiUser.id,
+            name: apiUser.name,
+            email: apiUser.email,
+            avatarIcon: apiUser.avatarIcon,
+            cards: [],
+            transactions: [],
+            joinedDate: apiUser.createdAt ?? Date()
+        )
+        user.cards = MockCardGenerator.generateCards(for: user)
+        user.transactions = MockCardGenerator.generateTransactions(for: user, cards: user.cards)
+        state.addMember(user, to: circleId, role: selectedRole)
+        dismiss()
+    }
+
+    private func sendEmailInvite() {
+        let email = searchText.trimmingCharacters(in: .whitespaces).lowercased()
+        if let circle {
+            state.addNotification(
+                title: "Invite sent",
+                body: "\(email) was invited to join \(circle.name)",
+                icon: "envelope"
+            )
+        }
+        dismiss()
+    }
+
+    private func initials(_ name: String) -> String {
+        let parts = name.split(separator: " ")
+        let first = parts.first?.first.map(String.init) ?? ""
+        let second = parts.dropFirst().first?.first.map(String.init) ?? ""
+        return (first + second).uppercased()
+    }
+
+    private func looksLikeEmail(_ s: String) -> Bool {
+        let t = s.trimmingCharacters(in: .whitespaces)
+        return t.contains("@") && t.contains(".") && t.count > 5
+    }
+
     private var availableRoles: [MemberRole] {
         guard let circle else { return MemberRole.allCases }
         if circle.type == .family {
@@ -254,14 +331,6 @@ struct AddMemberView: View {
         case .admin: return "star.fill"
         case .member: return "person.fill"
         case .junior: return "figure.child"
-        }
-    }
-
-    private func roleDescription(_ role: MemberRole) -> String {
-        switch role {
-        case .admin: return "Can manage the circle and invite more people"
-        case .member: return "Can view and contribute to shared goals"
-        case .junior: return "Limited access. Junior members cannot view parent finances."
         }
     }
 }

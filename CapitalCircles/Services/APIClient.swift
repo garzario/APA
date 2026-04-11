@@ -309,6 +309,14 @@ enum UserAPI {
     static func getByEmail(_ email: String) async throws -> APIUser {
         try await APIClient.get("/users/email/\(email)")
     }
+
+    static func search(query: String, excludeUserId: UUID? = nil) async throws -> [APIUser] {
+        var path = "/users/search?q=\(query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query)"
+        if let excludeUserId {
+            path += "&exclude=\(excludeUserId.uuidString)"
+        }
+        return try await APIClient.get(path)
+    }
 }
 
 enum CircleAPI {
