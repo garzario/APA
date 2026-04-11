@@ -170,25 +170,17 @@ struct HomeView: View {
         .padding(CCTheme.space6)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            ZStack {
+            ZStack(alignment: .bottomTrailing) {
                 CCTheme.navy
-                // Elegant Capital One red swoosh along the bottom right
-                GeometryReader { geo in
-                    Path { path in
-                        let w = geo.size.width
-                        let h = geo.size.height
-                        path.move(to: CGPoint(x: w * 0.3, y: h + 10))
-                        path.addCurve(
-                            to: CGPoint(x: w + 10, y: h * 0.25),
-                            control1: CGPoint(x: w * 0.85, y: h + 10),
-                            control2: CGPoint(x: w * 1.05, y: h * 0.85)
-                        )
-                        path.addLine(to: CGPoint(x: w + 10, y: h + 10))
-                        path.closeSubpath()
-                    }
-                    .fill(CCTheme.red)
+                // Real Capital One brand swoosh asset
+                Image("CapitalOneSwoosh")
+                    .resizable()
+                    .renderingMode(.template)
+                    .foregroundStyle(CCTheme.red)
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 180)
+                    .offset(x: 40, y: 30)
                     .opacity(0.95)
-                }
             }
         )
         .clipShape(RoundedRectangle(cornerRadius: CCTheme.radiusLarge))

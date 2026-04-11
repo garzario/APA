@@ -8,7 +8,9 @@ struct CapitalCirclesApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if appState.hasCompletedOnboarding {
+                // Show onboarding if the user hasn't completed it yet OR if the
+                // current user is empty (fresh install with stale UserDefaults).
+                if appState.hasCompletedOnboarding && !stateManager.currentUser.name.isEmpty {
                     ContentView()
                 } else {
                     OnboardingView()
