@@ -1,6 +1,14 @@
-# Capital Circles
+<p align="center">
+  <img src="CapitalCircles/App/Assets.xcassets/AppIcon.appiconset/icon_default.png" width="160" alt="Capital Circles app icon" />
+</p>
 
-> **A new way to reach your financial goals. Together, privately, powered by Capital One.**
+<h1 align="center">Capital Circles</h1>
+
+<p align="center">
+  <em>A new way to reach your financial goals. Together, privately, powered by Capital One.</em>
+</p>
+
+---
 
 Capital Circles turns banking from a solo experience into a shared one. Families, couples, roommates, and friends support each other's financial wellness without mixing accounts. Built in twelve hours for the **Capital One Hackathon at Tec de Monterrey**. **Track 2: Human-Centered Connection.**
 
