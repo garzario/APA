@@ -1,42 +1,91 @@
 # Capital Circles
 
-**Your financial hub for families, friends, and roommates.**
-Care for your circle's finances together without mixing accounts.
+> **A new way to reach your financial goals. Together, privately, powered by Capital One.**
 
-Built for the **Capital One Hackathon** at Tec de Monterrey.
-**Track 2: Human-Centered Connection.**
+Capital Circles turns banking from a solo experience into a shared one. Families, couples, roommates, and friends support each other's financial wellness without mixing accounts. Built in twelve hours for the **Capital One Hackathon at Tec de Monterrey**. **Track 2: Human-Centered Connection.**
 
 ---
 
-## The idea
+## The problem
 
-Most banking apps treat you like an island. One person, one account, one screen. But real life is shared: families plan together, couples save for a home, roommates split bills, friends go on trips. Capital Circles is a Capital One product that lets people care for each other's financial wellness without ever combining accounts.
+Every banking app in the world treats you like an island. One person, one account, one screen. Your family has no idea how you are doing. Your partner hides receipts. Your kids learn about money by accident.
 
-**Core principle:** privacy is a product feature, not a setting. Each circle type (family, couple, roommates, friends) has its own privacy rules, and those rules are enforced in code, not just a toggle.
+But money is shared in real life. Rent, groceries, trips, weddings, emergencies. Yet the apps we use to manage it are built for someone who lives alone on the moon.
 
----
+## The belief
 
-## Team APA
-
-| Person | Role |
-| --- | --- |
-| **Patricio Garza** | iOS, SwiftUI, design system, onboarding |
-| **Alana Martinez** | Data model, privacy logic, Claude prompt, backend schema |
-| **Adan Gonzalez** | API layer, goals/contributions, member search, integration |
-
-Everyone touched everything. Roles above are a rough lead, not a wall.
+> **Money should feel like a team sport.**
+> The people you love deserve to know you are doing okay, without you having to hand them your whole bank account.
 
 ---
 
-## Demo in 30 seconds
+## The innovation: privacy as a product feature
 
-1. User signs up with name + email (real write to Neon Postgres)
-2. Picks a circle type and configures privacy up front
-3. Invites members (live search against the DB) or by email
-4. Creates optional shared goals
-5. Enters the Hub: sees combined family spending, per-member wellness, Claude-generated AI insights, and a Capital One card optimizer
+Every other fintech treats privacy as a setting buried three levels deep. We treat it as the product. From the very first screen, Capital Circles asks you exactly what you are comfortable sharing — and the entire experience adapts to your answer.
 
-The full 4-minute pitch script lives in `Capital_Circles_Pitch.pdf` on the presenter's Desktop.
+Each circle type has its own default rules, enforced in code:
+
+| Data                   | Family              | Couple          | Roommates | Friends  |
+| ---------------------- | ------------------- | --------------- | --------- | -------- |
+| Shared goals           | Everyone            | Everyone        | Everyone  | Everyone |
+| Goal progress          | Everyone            | Everyone        | Everyone  | Everyone |
+| Personal spending      | Parents see kids    | Configurable    | Private   | Private  |
+| Card details           | Parents see kids    | Configurable    | Private   | Private  |
+| Spending categories    | Parents see kids    | Configurable    | Private   | Private  |
+| Smart Insights         | Private             | Private         | Private   | Private  |
+| Card Optimizer         | Private             | Private         | Private   | Private  |
+| **Children see parents** | **Never, ever, by design** | N/A    | N/A       | N/A      |
+
+**The last row is the most important one.** Parents should never have to hide from their kids to keep their own financial privacy. It is a dignity decision, not a technical one — so we made it impossible to toggle off.
+
+---
+
+## The product
+
+### 1. Onboarding that respects the moment
+
+Nine steps of editorial, one-question-at-a-time design. Big bold headlines. Pill buttons. No clutter.
+
+1. **Welcome** — "Reach goals together, not alone."
+2. **Intro** — Three principles of how it works.
+3. **Sign In** — Name and email. Creates a real user in Neon Postgres the second you tap continue.
+4. **Circle Type** — Family, couple, roommates, friends.
+5. **Circle Name** — With placeholder copy that adapts to the type.
+6. **Privacy** — *The most important screen in the app.* Configurable toggles per circle type.
+7. **Members** — Live database search or email invite.
+8. **First Goal** — Optional. Capital Circles is not a goal tracker.
+9. **Review** — Summary before writing to the database.
+
+### 2. The Hub
+
+Your family's financial command center.
+
+- **Hero card** with navy background and the iconic Capital One red swoosh
+- **Combined family spending** for the month, privacy-aware
+- **Member wellness row** for every person, with lock icons for anyone who chose not to share
+- **Shared goals** (only when they exist — goals are optional)
+- **Quick actions** for Card Optimizer and personal goals
+- **Recent activity** feed
+
+Tap any member to see their cards, transactions, and wellness status — *if and only if* your privacy rules allow it.
+
+### 3. Smart Insights (powered by Claude Sonnet 4.5)
+
+Four months of insight history, chronological picker at the top, every month with a narrative written specifically for you. The Claude prompt is engineered with the Capital Circles voice and includes real context: your circle name, your members, your goals.
+
+Tap **Refresh** and Claude writes a new take on the same data, live, right now. This is a real API call hitting Anthropic's servers — not a mock, not a cache.
+
+### 4. Card Optimizer
+
+Every Capital One card you own, every spending category, every reward rate. Before you swipe, you know which card earns the most. Venture X for travel. Savor for dining. Quicksilver for everything else. This is the kind of feature that should ship inside the Capital One app tomorrow.
+
+### 5. Nudges
+
+Send encouragement to circle members. Six curated prompts, from "Keep going!" to "Let's talk about money over coffee." Because human-centered means the humans actually talk to each other.
+
+### 6. Notifications
+
+Every meaningful event: milestone hit, new member joined, invite sent, goal completed. Tappable, with detail sheets, relative timestamps ("5m ago", "3d ago"), and mark-all-read.
 
 ---
 
@@ -49,23 +98,22 @@ The full 4-minute pitch script lives in `Capital_Circles_Pitch.pdf` on the prese
 |                                                    |
 |   Views  ->  @Observable AppStateManager           |
 |                  |                                 |
-|                  |  URLSession                     |
+|                  |  async/await + URLSession       |
 |                  v                                 |
 +------------------+---------------------------------+
                    |
-                   |  HTTPS (localhost for dev,
-                   |         deployed server in prod)
+                   |  HTTPS
                    v
 +----------------------------------------------------+
 |                                                    |
-|   FastAPI backend (Python 3.11+)                   |
+|   FastAPI backend (Python 3.11)                    |
 |                                                    |
 |   /users, /circles, /goals, /contributions         |
 |   /statements/generate  --->  Claude Sonnet 4.5    |
 |                                                    |
 +------------------+---------------------------------+
                    |
-                   |  psycopg3
+                   |  psycopg3 + SSL
                    v
 +----------------------------------------------------+
 |                                                    |
@@ -77,6 +125,28 @@ The full 4-minute pitch script lives in `Capital_Circles_Pitch.pdf` on the prese
 +----------------------------------------------------+
 ```
 
+Three layers, three responsibilities:
+
+- **iOS**: state management, presentation, local caching
+- **Backend**: authentication boundary, privacy enforcement, AI orchestration, data persistence
+- **Database**: single source of truth, ACID guarantees, audit history
+
+---
+
+## Tech stack
+
+| Layer       | Technology                                           |
+| ----------- | ---------------------------------------------------- |
+| iOS         | Swift 5.9, SwiftUI, @Observable, Charts framework    |
+| State       | Custom AppStateManager with async write-through      |
+| Networking  | URLSession, async/await, typed Codable DTOs          |
+| Design      | Custom CCTheme: colors, typography, spacing, buttons |
+| Project gen | XcodeGen (`project.yml`)                             |
+| Backend     | FastAPI, Pydantic, psycopg3                          |
+| Database    | Neon PostgreSQL (serverless, branching, autoscaling) |
+| AI          | Claude Sonnet 4.5 via Anthropic API                  |
+| Version ctrl| Git with feature branches, PRs, squash merges        |
+
 ---
 
 ## Repository layout
@@ -84,143 +154,26 @@ The full 4-minute pitch script lives in `Capital_Circles_Pitch.pdf` on the prese
 ```
 APA/
 |-- CapitalCircles/              # iOS app source
-|   |-- App/                     # Entry point + asset catalog + ContentView
-|   |-- Models/                  # User, Circle, Goal, Card, Transaction, SmartStatement
+|   |-- App/                     # Entry point, asset catalog, ContentView
+|   |-- Models/                  # Domain models (User, Circle, Goal, Card, ...)
 |   |-- Views/                   # SwiftUI views by feature area
-|   |-- ViewModels/              # (future) reserved for dedicated VMs
-|   |-- Services/                # APIClient, AppStateManager, ClaudeService, MockCardGenerator
-|   |-- Components/              # Reusable UI (CCAvatar, CCSwitch, TransactionRow, etc.)
-|   |-- Theme/                   # CCTheme: colors, typography, spacing, button styles
-|   |-- Secrets.swift            # Gitignored. Claude key + backend URL
-|   \-- Secrets.example.swift    # Template to copy into Secrets.swift
-|-- backend/                     # Python FastAPI server
-|   |-- main.py                  # API routes
-|   |-- db.py                    # Postgres connection helpers
-|   |-- models.py                # Pydantic request/response models
+|   |-- Services/                # APIClient, AppStateManager, ClaudeService, ...
+|   |-- Components/              # Reusable UI (CCAvatar, CCSwitch, ...)
+|   |-- Theme/                   # CCTheme: the design system
+|   |-- Secrets.swift            # Gitignored. API keys.
+|   \-- Secrets.example.swift    # Template
+|-- backend/                     # FastAPI server
+|   |-- main.py                  # Routes
+|   |-- db.py                    # Postgres connection
+|   |-- models.py                # Pydantic schemas
 |   |-- claude_service.py        # Claude API integration
-|   |-- schema.sql               # Postgres schema (auto-initialized)
-|   |-- seed_db.py               # Optional: seed test users into Neon
+|   |-- schema.sql               # Auto-initialized on startup
+|   |-- seed_db.py               # Optional seed script
 |   \-- requirements.txt
 |-- project.yml                  # XcodeGen spec
+|-- Capital_Circles_Pitch.pdf    # 4-minute presentation script
 \-- README.md                    # You are here
 ```
-
----
-
-## Feature overview
-
-### Onboarding (multi-step)
-1. **Welcome** — editorial headline
-2. **Intro** — three principles
-3. **Sign In** — name + email saved to Neon DB
-4. **Circle Type** — family, couple, roommates, friends
-5. **Circle Name** — with type-specific placeholder
-6. **Privacy** — configurable sharing rules (the innovation)
-7. **Members** — live search of DB or email invite
-8. **First Goal** — optional
-9. **Review** — summary before creating
-10. **Enter your hub** — everything lands in the Hub
-
-### The Hub
-- **Hero card** with navy background and real Capital One red swoosh
-- **Combined circle spending** for the month (respects privacy rules)
-- **Financial Wellness** per-member rows with lock icons for private members
-- **Goals** section only appears when goals exist (optional)
-- **Quick actions** for Card Optimizer and Personal Goals
-- **Recent activity** feed
-
-### Insights (AI-powered)
-- 4 months of history (Jan to Apr) with chronological picker
-- Per-month narrative generated by **Claude Sonnet 4.5**
-- Context-aware prompt includes circle name, members, and goals
-- Refresh button triggers a live API call, gets a fresh take
-- Category breakdown chart with Capital Circles navy bars
-
-### Card Optimizer
-- Every Capital One card the user owns
-- Category picker with pills (Dining, Travel, Groceries, etc.)
-- Highlights the BEST card for the selected category
-- Shows reward rates from real Capital One products (Venture X, Venture, Savor, SavorOne, Quicksilver, Platinum)
-
-### Circles and members
-- Multi-step circle creation from the hub (type, name, members, privacy, goal, review)
-- Privacy step per type with custom toggles
-- Live search of existing users in the DB
-- Email invite fallback for people not yet on the platform
-- Member detail shows cards, transactions, and wellness **only if privacy allows**
-- Nudges: send encouragement messages to circle members
-
-### Goals
-- Shared (circle-level) or personal (user-level)
-- Progress bars and contribution history
-- Real-time updates when contributing (UI + DB)
-- Quick contribution amounts ($100, $500, $1000, $5000)
-- Deletion with confirmation
-
-### Notifications
-- Tappable notifications with detail sheets
-- Relative time ("5m ago", "2h ago", "3d ago")
-- Mark as read, mark all as read
-- Generated for milestones, new members, invites, nudges
-
----
-
-## Privacy model
-
-The heart of the product. Each circle type enforces different default rules.
-
-| Data                    | Family              | Roommates | Friends  | Couple        |
-| ----------------------- | ------------------- | --------- | -------- | ------------- |
-| Shared goals            | Everyone            | Everyone  | Everyone | Everyone      |
-| Goal progress           | Everyone            | Everyone  | Everyone | Everyone      |
-| Personal spending       | Parents see kids    | Private   | Private  | Configurable  |
-| Card details            | Parents see kids    | Private   | Private  | Configurable  |
-| Spending categories     | Parents see kids    | Private   | Private  | Configurable  |
-| Smart Statement         | Private             | Private   | Private  | Private       |
-| Card Optimizer          | Private             | Private   | Private  | Private       |
-| Children see parents    | **NEVER**           | N/A       | N/A      | N/A           |
-
-**Hard-coded rules** (cannot be changed by toggles):
-- Children (junior role in family circles) NEVER see parent finances
-- Smart Statements and Card Optimizer are always private
-- Each user can leave any circle at any time
-
-**Configurable in onboarding:**
-- Family: "Parents see kids" toggle, "Parents see each other" toggle
-- Couple: "Share categories" toggle, "Share amounts" toggle
-- Roommates and friends: locked to goals-only (informational)
-
----
-
-## Tech stack
-
-### iOS app
-- **Language**: Swift 5.9
-- **Framework**: SwiftUI with `@Observable` (iOS 17+)
-- **Networking**: URLSession with async/await
-- **Charts**: Apple Charts framework
-- **State**: Single `@Observable` `AppStateManager` as source of truth
-- **Design system**: Custom `CCTheme` (colors, typography, spacing, button styles)
-- **Project generation**: XcodeGen (`project.yml`)
-
-### Backend
-- **Language**: Python 3.11+
-- **Framework**: FastAPI with Pydantic models
-- **Database driver**: psycopg3 (binary)
-- **AI**: Anthropic Claude API (Claude Sonnet 4.5)
-- **CORS**: Enabled for all origins (dev only)
-
-### Database
-- **Provider**: Neon (serverless PostgreSQL, cloud-hosted)
-- **Schema**: auto-initialized from `schema.sql` on first startup
-- **Tables**: users, cards, circles, circle_members, goals, contributions, transactions
-- **Indexes**: on foreign keys and common query paths
-
-### AI
-- **Model**: Claude Sonnet 4.5 (`claude-sonnet-4-5-20250929`)
-- **Prompt**: System prompt with the Capital Circles voice + context
-- **Context injection**: Circle name, members, shared goals, personal goals
-- **Output**: Strict JSON with narrative + insights
 
 ---
 
@@ -228,9 +181,11 @@ The heart of the product. Each circle type enforces different default rules.
 
 ### Prerequisites
 
-- macOS with Xcode 16.3+
-- Python 3.11+ with pip
+- macOS with Xcode 16.3 or newer
+- Python 3.11 or newer
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen): `brew install xcodegen`
+- A Neon PostgreSQL database (or any Postgres with the schema applied)
+- An Anthropic API key with credits
 
 ### Backend
 
@@ -239,7 +194,7 @@ cd backend
 pip3 install 'psycopg[binary]' fastapi 'uvicorn[standard]' python-dotenv httpx
 ```
 
-Create `backend/.env` (this file is gitignored):
+Create `backend/.env` (gitignored):
 
 ```
 DATABASE_URL=postgresql://<user>:<pass>@<host>/<db>?sslmode=require
@@ -253,16 +208,20 @@ Run the server:
 python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-On first startup the schema is auto-initialized (`schema.sql` is executed automatically).
-
-### iOS app
+The schema is applied automatically from `schema.sql` on first startup. Verify the server is up:
 
 ```bash
-# From the project root
+curl http://localhost:8000/health
+# {"status":"ok"}
+```
+
+### iOS
+
+```bash
 xcodegen generate
 ```
 
-Create `CapitalCircles/Secrets.swift` (gitignored) with:
+Create `CapitalCircles/Secrets.swift` (gitignored):
 
 ```swift
 import Foundation
@@ -274,174 +233,153 @@ enum Secrets {
 }
 ```
 
-Open `CapitalCircles.xcodeproj`, set your signing team under **Signing & Capabilities**, and run on the iPhone 17 Pro simulator.
-
-### Test flow
-
-1. Open the app. Onboarding shows.
-2. Tap `Get started`, `Continue`, `Continue` to reach Sign In.
-3. Enter any name and email. The user is created in Neon.
-4. Pick circle type, name it, configure privacy, invite members (search live), create a goal, review, and enter the hub.
-5. Tap Insights to see AI-generated narratives. Tap refresh for a live Claude call.
-6. Tap any member to see their data (enforced by privacy).
+Open `CapitalCircles.xcodeproj`, set your development team under **Signing & Capabilities**, and run on the **iPhone 17 Pro** simulator.
 
 ---
 
 ## How it scales
 
-What we built is a **POC with a real backend**. Here is how it becomes a production-grade Capital One product.
+Capital Circles is built as a proof of concept with a real backend and a real database. Here is the roadmap from today's hackathon build to a product that serves every Capital One customer.
 
-### 1. Backend deployment
+### Deployment and infrastructure
 
-**Today**: FastAPI runs on localhost:8000 for development.
+- **Compute**: migrate the FastAPI app to AWS ECS Fargate or Capital One's internal Kubernetes, behind an Application Load Balancer with health checks and auto-scaling
+- **Database**: Neon already offers serverless Postgres with branching (dev, staging, prod), point-in-time recovery, and autoscaling compute. Capital One would add read replicas for analytical queries
+- **Caching**: Redis for session state, hot member lookups, and rate limiting
+- **CDN**: CloudFront for the API with caching on idempotent GETs
+- **Observability**: OpenTelemetry traces into Datadog, structured JSON logs into Splunk, Sentry for client errors
 
-**Production path**:
-- Deploy the backend to **AWS ECS**, **Fly.io**, or **Capital One's internal Kubernetes** with multiple replicas behind a load balancer
-- Neon scales automatically via their serverless Postgres (autoscaling compute, branching for dev/staging/prod)
-- Add **Redis** for session caching and rate limiting
-- **OpenTelemetry** tracing for every request, exported to Datadog or Honeycomb
+### Authentication and identity
 
-### 2. Authentication
+- **OAuth 2.0** with Capital One's existing identity provider, the same one the main Capital One mobile app uses
+- **JWT bearer tokens** on every request, validated server-side with jwks rotation
+- **Refresh token rotation** with family-linking for multi-account households
+- **Biometric re-auth** (Face ID / Touch ID) for sensitive actions like changing privacy or contributing
+- **SCIM provisioning** so family accounts can be linked and managed centrally
 
-**Today**: Email-based sign in, no password. For hackathon demo only.
+### Data security
 
-**Production path**:
-- Integrate **Capital One's existing OAuth 2.0 identity provider** (same as the Capital One mobile app)
-- JWT bearer tokens on every request, validated server-side
-- Refresh token rotation
-- Biometric re-auth for sensitive operations (contributions, changing privacy)
-- SCIM provisioning for family account linking
+- **Field-level encryption** for PII (name, email) using AWS KMS or HashiCorp Vault
+- **Row-level security** in Postgres so a user can only query rows tied to their identity
+- **TLS everywhere** including internal service-to-service traffic
+- **Audit log** on every financial read and write, stored in an append-only table with tamper detection
+- **Regular penetration testing** and SOC 2 Type II audit
 
-### 3. Data security
+### Privacy enforcement at the API layer
 
-**Today**: Plain Postgres storage with SSL in transit.
+Today the privacy matrix is enforced in the iOS client. In production, the backend becomes the final arbiter:
 
-**Production path**:
-- **Field-level encryption** for personally identifiable information (email, name) using AWS KMS or Vault
-- **Row-level security** in Postgres so users can only query their own rows
-- **Audit logs** for every read/write on financial data, stored in a separate append-only log
-- **PCI compliance** for any card data surfacing (we currently mock the card numbers; in prod they would come from Capital One's card API)
-- GDPR/CCPA data export and deletion flows built into Profile settings
+- A **central policy engine** (Open Policy Agent or AWS Cedar) encodes the privacy matrix
+- Every endpoint that returns financial data calls the policy engine before responding
+- **Denied queries** return an empty payload, not a 403, so the client can render a clean "private" state
+- **Explicit consent flow** with audit trail when a member opts in to share more
+- **Privacy impact reports** surfaced to the user every quarter
 
-### 4. Privacy enforcement
+### AI cost and reliability
 
-**Today**: Privacy rules enforced in the iOS client (`canViewSpending`) and the backend trusts the client.
+Claude insights scale gracefully thanks to Anthropic's features:
 
-**Production path**:
-- **Backend enforces privacy at the API layer**. Every query that returns financial data includes a `WHERE` clause that checks the requesting user's permissions
-- A **policy engine** (OPA / Cedar) that encodes the privacy matrix centrally, called by every endpoint
-- **Explicit consent flow** for cross-member data access, with audit trail
-- Regular privacy audits and penetration testing
+- **Prompt caching** on the system prompt cuts input tokens by roughly ninety percent. Our system prompt is around 800 tokens; cached it costs pennies per user per month.
+- **Background generation**: insights are created once per user per month in a nightly job, so the iOS app always loads instantly
+- **On-demand refresh**: the user can request a fresh take; we budget a maximum refreshes per user per month
+- **Smart caching keys**: prompts keyed on circle state hash, so regeneration only happens when underlying data changes
+- **Fallback narratives** using rule-based templates when the API is unavailable, so the feature never goes dark
 
-### 5. AI cost and reliability
+Back-of-envelope economics: with prompt caching and background generation, insights cost well under one cent per user per month. Even at ten million monthly active users, the AI bill is negligible compared to the engagement lift.
 
-**Today**: Every Insights refresh hits Claude directly with a fresh prompt.
+### Data model evolution
 
-**Production path**:
-- **Prompt caching** (Anthropic's native feature) for the system prompt — reduces input tokens by ~90%
-- Insights **cached per-user per-month**, regenerated on demand or when transactions change
-- **Background job** that pre-generates insights overnight so the user sees them instantly
-- **Fallback narratives** using rule-based templates when the API is unavailable
-- **Cost ceiling per user per month** with graceful degradation
-
-Back-of-envelope cost: with prompt caching, ~$0.002 per insight generation. Even with a million users refreshing weekly, that's ~$8k/month in AI costs. Negligible compared to the engagement lift.
-
-### 6. Data model evolution
-
-**Today**: Single Postgres schema with foreign keys.
-
-**Production path**:
-- **Event sourcing** for financial mutations (contributions, goal changes) so we can rebuild state and audit any change
+- **Event sourcing** for financial mutations: every contribution, every goal edit, every member join is stored as an immutable event. Current state is a materialized view. This gives us a perfect audit trail and the ability to replay history.
 - **Read replicas** for the analytical queries that power the Hub's per-member wellness view
-- **Materialized views** for monthly aggregations that the Hub displays
-- **Database sharding** by user ID when we cross 10M users
-- **Time-series database** (TimescaleDB or ClickHouse) for transaction history beyond the last 90 days
+- **Materialized views** for monthly aggregations, refreshed hourly
+- **Horizontal sharding** by user ID when we pass ten million users
+- **Time-series storage** (TimescaleDB or ClickHouse) for transaction history beyond ninety days
 
-### 7. Multi-device sync
+### Realtime and push
 
-**Today**: The iOS app reads from the backend on launch. Changes from other devices are not pushed in real time.
+- **WebSocket connection** per active session so contributions, nudges, and new members appear on all devices instantly
+- **APNs push notifications** for events that happen while the app is closed: a parent gets pinged when their kid hits an allowance threshold, a partner gets nudged when a shared goal crosses a milestone
+- **Optimistic UI updates** with server reconciliation so the app feels instantaneous even on slow networks
 
-**Production path**:
-- **WebSocket connection** per session for real-time updates (new contributions, circle changes, new members)
-- **Push notifications** via APNs for events that happen while the app is closed
-- **Optimistic UI updates** with conflict resolution when the server state disagrees
-- **Offline mode** with local SwiftData cache that syncs on reconnect
+### Platform expansion
 
-### 8. Expansion beyond iOS
+Capital Circles is designed backend-first so every client is a thin layer on top of the same API.
 
-- **Android** via a React Native or native Kotlin port. The backend API is the single source of truth, so both clients work identically.
-- **Web dashboard** for parents who prefer a desktop experience (same backend, Next.js frontend)
-- **Embedded in the main Capital One app** as a first-class feature, sharing identity and card data natively
-- **Apple Watch** widget showing the combined family spending and next goal milestone
+- **Android** client with Kotlin Jetpack Compose using the same REST endpoints
+- **Web dashboard** at circles.capitalone.com for parents who prefer a larger screen, built with Next.js
+- **Apple Watch** complication showing the family's combined spending and next milestone
+- **Widget** on iOS home screen for one-tap goal progress
+- **Deep integration** into the main Capital One app as a first-class feature using the existing identity session
+- **Ask our Eno assistant**: "How are we doing on the Cancun trip?" answered from the Capital Circles API
 
-### 9. Observability and operations
+### Compliance and regulation
 
-- **Structured logs** (JSON) shipped to Datadog or Splunk
-- **Error tracking** via Sentry, grouped by user and release
-- **Feature flags** (LaunchDarkly or Statsig) for gradual rollout of privacy changes
-- **SLIs/SLOs**: p99 latency under 500ms for the Hub, 99.9% availability, AI refresh success rate above 99%
-- **On-call rotation** for the backend and AI service
-
-### 10. Compliance and regulation
-
-- **SOC 2 Type II** audit for the backend and data stores
+- **SOC 2 Type II** audit across backend, database, and client
+- **PCI DSS** compliance when real card numbers flow through the product
+- **GDPR and CCPA** data export and deletion flows exposed in Profile settings
 - **PSD2 / Open Banking** alignment for European expansion
-- **Financial Conduct Authority** registration if operating outside the US
-- **KYC/AML** integration via Capital One's existing identity systems
+- **Financial Conduct Authority** registration for the UK
+- **KYC / AML** integration via Capital One's existing identity systems
 
 ---
 
-## What is and is not built
+## Why Capital One should ship this
 
-### Built and working
-- Full iOS app with 20+ screens
-- FastAPI backend with typed DTOs
-- Neon Postgres with auto-initialized schema
-- Real sign-in flow creating users in the DB
-- Circle creation with privacy configuration
-- Goal creation and contribution with live UI updates
-- Member search against the database
-- Claude AI insights with context injection
-- 4 months of insight history
-- Card optimizer with real Capital One card data
-- Privacy model enforced in the UI
-- Nudge system between members
-- Multi-step onboarding with 9 steps
-- Capital One design language end-to-end
+**Loyalty**: families that use Capital One together stay on Capital One longer. When your spouse, your kids, and your in-laws are all in the same hub, switching banks means migrating four people instead of one.
 
-### Mocked for the POC
-- **Cards and transactions**: generated deterministically per user in the iOS client. In production these come from Capital One's card API.
-- **Authentication**: email-based, no password. Production uses Capital One OAuth.
-- **Backend deployment**: runs on localhost for development. Production is deployed.
+**Cross-sell**: the Card Optimizer surfaces every Capital One product naturally. A household that sees the value of Venture X through the lens of their family trip is more likely to apply.
 
-### Not yet built
-- Real-time sync between devices
-- Push notifications
-- Apple Watch app
-- Android app
-- Web dashboard
+**Differentiation**: no major US bank has a human-centered financial wellness product. Capital Circles is a wedge into a category Chase, Bank of America, and Wells Fargo cannot replicate without rebuilding their apps from scratch.
+
+**Trust**: the privacy model demonstrates that Capital One understands modern families. "The bank that lets you look after your kids without spying on your spouse" is a positioning no competitor can copy.
+
+**Data**: once families are inside Capital Circles, Capital One sees household-level financial behavior instead of individual behavior. Better risk models, better product recommendations, better fraud detection.
 
 ---
 
-## Key decisions we made
+## The team
 
-**Why a Hub focused on wellness, not goals?**
-Goals are a tool, not the point. Real families care about each other's ongoing financial health, not just saving for one thing at a time. So the Hub leads with financial wellness and shows goals as an optional section.
+We are three ITC students from Tec de Monterrey who believe banking should feel human.
 
-**Why enforce children cannot see parents as hard code?**
-Because parents should never feel they have to hide from their kids to keep their own financial privacy. It is a dignity decision, not a technical one.
+- **Patricio Garza** — iOS, SwiftUI, design system, onboarding flow
+- **Alana Martinez** — Data model, privacy logic, Claude prompt engineering, backend schema
+- **Adan Gonzalez** — API layer, goals and contributions, member search, integration testing
 
-**Why Capital One red and navy?**
-This is a Capital One product first and foremost. The design language is deliberately theirs, with the iconic red swoosh in the Hub hero.
-
-**Why use Claude instead of a mock?**
-Because a real Capital One product would use real AI, and we wanted to show we can integrate with production AI infrastructure. The prompt is engineered for the Capital Circles voice.
-
-**Why SwiftUI with @Observable instead of UIKit?**
-Faster to build, easier to iterate, and SwiftUI's declarative nature matches our editorial design language. `@Observable` removes most of the boilerplate of previous state management approaches.
+Everyone touched everything. Pair-programmed where it mattered. Shipped with real commits from real branches through real pull requests.
 
 ---
 
-## License
+## Engineering discipline
 
-Built for the Capital One Hackathon at Tec de Monterrey. All code by Team APA (Patricio Garza, Alana Martinez, Adan Gonzalez).
+This project was built in twelve hours under competition conditions. We still held ourselves to production engineering standards:
+
+- **Git**: feature branches merged to dev, dev merged to main, PR descriptions explain the why, commits are signed and timestamped
+- **Code quality**: no force-unwraps in production paths, consistent naming, no dead code
+- **Separation of concerns**: UI does not talk to the database. Services own side effects. State is a single source of truth.
+- **Typed everywhere**: Codable DTOs on iOS, Pydantic models on the backend, no stringly-typed API contracts
+- **Graceful degradation**: the app stays useful when the backend is slow or the AI is rate-limited
+- **Secrets management**: API keys in gitignored files, with clear templates for collaborators
+- **Documentation**: this README, inline code comments where intent is non-obvious, a 4-minute pitch script committed alongside the source
+
+---
+
+## Core design principles
+
+1. **Privacy is a product feature, not a setting.** It lives at the center of onboarding, not in a menu.
+2. **The Hub is about people, not numbers.** Wellness first, goals second, transactions third.
+3. **Goals are optional.** The product is about ongoing care, not one-time saving.
+4. **Respect the brand.** Capital One navy and red from the first pixel. The red swoosh in every hero card.
+5. **Editorial over decorative.** Typography-forward, minimal ornament, generous whitespace.
+6. **Every interaction is deliberate.** No accidental taps, no dead ends, every screen knows where the user is going next.
+
+---
+
+## Closing
+
+Most banking apps are built for one person, managing one account, in isolation. Capital Circles is built for the people you love, and for a version of money that feels less like a scoreboard and more like a team sport.
+
+Built in twelve hours. Ready to ship.
+
+**Team APA**
+Patricio Garza · Alana Martinez · Adan Gonzalez
+Capital One Hackathon · Tec de Monterrey · April 2026
